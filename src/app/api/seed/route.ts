@@ -4,10 +4,23 @@ import bcrypt from 'bcryptjs';
 
 export async function POST() {
   try {
-    // 1. Clear database
+    // 1. Clear database in dependent order to prevent foreign key errors
+    await prisma.appQuery.deleteMany();
+    await prisma.auditLog.deleteMany();
     await prisma.notification.deleteMany();
+    await prisma.paymentVerification.deleteMany();
+    await prisma.expense.deleteMany();
+    await prisma.rentAgreement.deleteMany();
+    await prisma.payment.deleteMany();
+    await prisma.visitor.deleteMany();
+    await prisma.complaint.deleteMany();
+    await prisma.roomAllocation.deleteMany();
+    await prisma.customer.deleteMany();
+    await prisma.bed.deleteMany();
+    await prisma.room.deleteMany();
     await prisma.user.deleteMany();
-    await prisma.property.deleteMany(); // Cascade will clean up rooms, beds, customers, payments, etc.
+    await prisma.systemSettings.deleteMany();
+    await prisma.property.deleteMany();
 
     // 2. Create the Properties
     const propA = await prisma.property.create({
