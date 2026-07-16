@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, Sparkles, Building, KeyRound, ArrowRight, ShieldCheck, RefreshCw, Home } from 'lucide-react';
+import { Lock, Mail, Sparkles, Building, KeyRound, ArrowRight, ShieldCheck, RefreshCw, Home, Download } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,6 +11,48 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [seeding, setSeeding] = useState(false);
   const router = useRouter();
+
+  // PWA installer states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    // Detect iOS
+    const iosDetect = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(iosDetect);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    if (!isStandalone) {
+      setIsInstallable(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setIsInstallable(false);
+      }
+    } else {
+      setShowInstallGuide(true);
+    }
+  };
 
   useEffect(() => {
     // Check if already logged in
@@ -118,6 +160,18 @@ export default function LoginPage() {
               <p className="text-xs text-slate-500 font-medium">SaaS Multitenant PG Management Platform</p>
             </div>
           </div>
+
+          {/* PWA Install Button */}
+          {isInstallable && (
+            <button
+              type="button"
+              onClick={handleInstallApp}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold py-2.5 px-4 rounded-xl text-[10px] uppercase tracking-wider shadow-sm transition-all"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download Mobile/Desktop App</span>
+            </button>
+          )}
 
           <div className="space-y-4">
             
@@ -228,6 +282,42 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* PWA Install Guide Modal */}
+      {showInstallGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans text-xs">
+          <div className="bg-white border border-slate-200 max-w-sm w-full p-6 rounded-3xl shadow-xl space-y-4 text-center">
+            <div className="bg-blue-50 text-blue-600 p-3 rounded-full w-12 h-12 flex items-center justify-center mx-auto shadow-inner">
+              <Download className="w-6 h-6 animate-bounce" />
+            </div>
+            
+            <div className="space-y-3">
+              <h3 className="text-sm font-extrabold text-slate-900">How to Install PWA App</h3>
+              
+              {isIOS ? (
+                <div className="text-slate-500 font-semibold leading-relaxed text-left space-y-1">
+                  <p>1. Tap the <span className="font-bold text-blue-600">Share button</span> (square with arrow up icon) in Safari at the bottom of the screen.</p>
+                  <p>2. Scroll down and select <span className="font-bold text-slate-900">"Add to Home Screen"</span>.</p>
+                  <p>3. Tap <span className="font-bold text-blue-600">Add</span> to complete the setup.</p>
+                </div>
+              ) : (
+                <div className="text-slate-500 font-semibold leading-relaxed text-left space-y-1">
+                  <p>1. Open the browser's settings menu (three dots in Chrome on Android, or Chrome options on Desktop).</p>
+                  <p>2. Select <span className="font-bold text-slate-900">"Install app"</span> or <span className="font-bold text-slate-900">"Add to Home screen"</span>.</p>
+                  <p>3. Follow the prompt to complete installation.</p>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowInstallGuide(false)}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs active:scale-95 transition-transform"
+            >
+              Got It
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
