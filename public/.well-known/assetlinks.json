@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.magictick_pg.twa",
+      "sha256_cert_fingerprints": [
+        "46:A1:92:79:32:3A:00:7D:7D:47:4D:1B:62:DC:0A:43:C0:EC:F5:EE:E9:63:A2:EB:EA:FF:96:1B:FB:EC:5A:0B"
+      ]
+    }
+  }
+]
