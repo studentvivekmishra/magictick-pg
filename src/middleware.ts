@@ -10,7 +10,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Redirect API requests to a JSON 401, but redirect pages to the login UI
   if (!token) {
+    if (pathname.startsWith('/api/')) {
+      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     return NextResponse.redirect(new URL('/', request.url));
   }
 
@@ -18,6 +25,12 @@ export function middleware(request: NextRequest) {
     // Edge-friendly JWT payload decoding
     const parts = token.split('.');
     if (parts.length !== 3) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
       return NextResponse.redirect(new URL('/', request.url));
     }
     
@@ -35,8 +48,13 @@ export function middleware(request: NextRequest) {
 
     // RBAC Permissions check: Tenant vs Admins
     if (role === 'TENANT') {
-      // Tenants are restricted only to the tenant dashboard and APIs for complaints, visitors, etc.
-      if (!pathname.startsWith('/tenant') && !pathname.startsWith('/api/complaints') && !pathname.startsWith('/api/visitors')) {
+      if (!pathname.startsWith('/tenant') && !pathname.startsWith('/api/complaints') && !pathname.startsWith('/api/visitors') && !pathname.startsWith('/api/tenant')) {
+        if (pathname.startsWith('/api/')) {
+          return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
         return NextResponse.redirect(new URL('/tenant', request.url));
       }
     } else {
@@ -54,13 +72,22 @@ export function middleware(request: NextRequest) {
 
       if (pathname.startsWith('/api/expenses') || pathname.startsWith('/api/analytics') || pathname.startsWith('/api/settings')) {
         if (role !== 'OWNER' && role !== 'MANAGER') {
-          return new NextResponse(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+          return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          });
         }
       }
     }
 
     return NextResponse.next();
   } catch (error) {
+    if (pathname.startsWith('/api/')) {
+      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     return NextResponse.redirect(new URL('/', request.url));
   }
 }
