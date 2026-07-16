@@ -22,11 +22,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let settings = await prisma.systemSettings.findFirst();
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property association missing' }, { status: 400 });
+    }
+
+    let settings = await prisma.systemSettings.findUnique({
+      where: { propertyId: user.propertyId },
+    });
+
     if (!settings) {
-      // Fallback fallback if seeder didn't run yet
+      // Fallback create settings for property
       settings = await prisma.systemSettings.create({
-        data: {},
+        data: {
+          propertyId: user.propertyId,
+        },
       });
     }
 
@@ -40,12 +49,18 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await getAuthUser(request);
-    if (!user || user.role !== 'OWNER') {
+    if (!user || (user.role !== 'OWNER' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property association missing' }, { status: 400 });
+    }
+
     const body = await request.json();
-    const currentSettings = await prisma.systemSettings.findFirst();
+    const currentSettings = await prisma.systemSettings.findUnique({
+      where: { propertyId: user.propertyId },
+    });
 
     const dataToSave = {
       pgName: body.pgName || undefined,
@@ -69,18 +84,22 @@ export async function POST(request: Request) {
     let settings;
     if (currentSettings) {
       settings = await prisma.systemSettings.update({
-        where: { id: currentSettings.id },
+        where: { propertyId: user.propertyId },
         data: dataToSave,
       });
     } else {
       settings = await prisma.systemSettings.create({
-        data: dataToSave as any,
+        data: {
+          ...dataToSave,
+          propertyId: user.propertyId,
+        } as any,
       });
     }
 
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'SETTINGS_UPDATED',
         details: `Updated PG system configurations & SMTP fields`,

@@ -22,12 +22,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Guard: Only Owners and Managers can access expense financials
-    if (user.role !== 'OWNER' && user.role !== 'MANAGER') {
+    // Guard: Only Owners, Managers and Super Admins can access expense financials
+    if (user.role !== 'OWNER' && user.role !== 'MANAGER' && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const whereClause: any = {};
+    if (user.role !== 'SUPER_ADMIN') {
+      whereClause.propertyId = user.propertyId || '';
+    }
+
     const expenses = await prisma.expense.findMany({
+      where: whereClause,
       include: {
         createdBy: {
           select: { name: true },
@@ -50,6 +56,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property association missing' }, { status: 400 });
+    }
+
     const { category, amount, date, remarks } = await request.json();
 
     if (!category || !amount || !date) {
@@ -58,6 +68,7 @@ export async function POST(request: Request) {
 
     const newExpense = await prisma.expense.create({
       data: {
+        propertyId: user.propertyId!,
         category,
         amount: parseFloat(amount),
         date: new Date(date),
@@ -69,6 +80,7 @@ export async function POST(request: Request) {
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'EXPENSE_RECORDED',
         details: `Recorded expense of ₹${amount} under category ${category}`,

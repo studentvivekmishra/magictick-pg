@@ -4,30 +4,32 @@ import bcrypt from 'bcryptjs';
 
 export async function POST() {
   try {
-    // 1. Clear database in correct relational order
-    await prisma.systemSettings.deleteMany();
-    await prisma.occupancyHistory.deleteMany();
-    await prisma.roomPricingHistory.deleteMany();
-    await prisma.report.deleteMany();
-    await prisma.auditLog.deleteMany();
-    await prisma.visitor.deleteMany();
-    await prisma.complaint.deleteMany();
-    await prisma.expense.deleteMany();
+    // 1. Clear database
     await prisma.notification.deleteMany();
-    await prisma.document.deleteMany();
-    await prisma.rentAgreement.deleteMany();
-    await prisma.deposit.deleteMany();
-    await prisma.paymentVerification.deleteMany();
-    await prisma.payment.deleteMany();
-    await prisma.roomAllocation.deleteMany();
-    await prisma.user.deleteMany(); // Cascade will handle dependencies
-    await prisma.customer.deleteMany();
-    await prisma.bed.deleteMany();
-    await prisma.room.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.property.deleteMany(); // Cascade will clean up rooms, beds, customers, payments, etc.
 
-    // 2. Create Default System Settings
+    // 2. Create the Properties
+    const propA = await prisma.property.create({
+      data: {
+        name: 'MagicTick HSR PG',
+        slug: 'hsr-pg',
+        address: 'Sector 5, HSR Layout, Bengaluru, Karnataka',
+      },
+    });
+
+    const propB = await prisma.property.create({
+      data: {
+        name: 'Alpha Hostel',
+        slug: 'alpha-hostel',
+        address: 'Yerwada, Pune, Maharashtra',
+      },
+    });
+
+    // 3. Create SystemSettings for both Properties
     await prisma.systemSettings.create({
       data: {
+        propertyId: propA.id,
         pgName: 'MagicTick HSR PG',
         pgAddress: 'Sector 5, HSR Layout, Bengaluru, Karnataka',
         singleSharingPrice: 8000,
@@ -37,17 +39,41 @@ export async function POST() {
         rentDueDateDay: 5,
         lateFeeDaysGrace: 3,
         lateFeeFlatRate: 500,
-        smtpHost: 'smtp.gmail.com',
-        smtpPort: 587,
-        smtpUser: '',
-        smtpPass: '',
       },
     });
 
-    // 3. Create Users
-    const hashedPassword = bcrypt.hashSync('password123', 10);
-    const owner = await prisma.user.create({
+    await prisma.systemSettings.create({
       data: {
+        propertyId: propB.id,
+        pgName: 'Alpha Hostel',
+        pgAddress: 'Yerwada, Pune, Maharashtra',
+        singleSharingPrice: 7500,
+        doubleSharingPrice: 5500,
+        tripleSharingPrice: 4500,
+        defaultDeposit: 10000,
+        rentDueDateDay: 10,
+        lateFeeDaysGrace: 5,
+        lateFeeFlatRate: 200,
+      },
+    });
+
+    // 4. Create Users (Super Admin, Owners, Managers, Receptionists)
+    const hashedPassword = bcrypt.hashSync('password123', 10);
+    
+    // Super Admin (No property link)
+    await prisma.user.create({
+      data: {
+        email: 'superadmin@magictick.com',
+        name: 'MagicTick CEO',
+        passwordHash: hashedPassword,
+        role: 'SUPER_ADMIN',
+      },
+    });
+
+    // Property A Users
+    const ownerA = await prisma.user.create({
+      data: {
+        propertyId: propA.id,
         email: 'owner@pgnexus.com',
         name: 'Ramesh Kumar',
         passwordHash: hashedPassword,
@@ -55,27 +81,57 @@ export async function POST() {
       },
     });
 
-    const manager = await prisma.user.create({
+    const managerA = await prisma.user.create({
       data: {
+        propertyId: propA.id,
         email: 'manager@pgnexus.com',
         name: 'Vikram Singh',
         passwordHash: hashedPassword,
         role: 'MANAGER',
+        salaryAmount: 18000,
+        salaryPaidStatus: 'PENDING',
       },
     });
 
-    const receptionist = await prisma.user.create({
+    const receptionistA = await prisma.user.create({
       data: {
+        propertyId: propA.id,
         email: 'receptionist@pgnexus.com',
         name: 'Sneha Patel',
         passwordHash: hashedPassword,
         role: 'RECEPTIONIST',
+        salaryAmount: 12000,
+        salaryPaidStatus: 'PENDING',
       },
     });
 
-    // 4. Create Rooms & Beds
+    // Property B Users
+    await prisma.user.create({
+      data: {
+        propertyId: propB.id,
+        email: 'owner_b@pgnexus.com',
+        name: 'Sanjay Pune',
+        passwordHash: hashedPassword,
+        role: 'OWNER',
+      },
+    });
+
+    await prisma.user.create({
+      data: {
+        propertyId: propB.id,
+        email: 'manager_b@pgnexus.com',
+        name: 'Amit Pune',
+        passwordHash: hashedPassword,
+        role: 'MANAGER',
+        salaryAmount: 20000,
+        salaryPaidStatus: 'PENDING',
+      },
+    });
+
+    // 5. Create Rooms & Beds for Property A
     const r101 = await prisma.room.create({
       data: {
+        propertyId: propA.id,
         roomNumber: '101',
         floor: 1,
         type: 'SINGLE',
@@ -91,6 +147,7 @@ export async function POST() {
 
     const r102 = await prisma.room.create({
       data: {
+        propertyId: propA.id,
         roomNumber: '102',
         floor: 1,
         type: 'DOUBLE',
@@ -109,6 +166,7 @@ export async function POST() {
 
     const r201 = await prisma.room.create({
       data: {
+        propertyId: propA.id,
         roomNumber: '201',
         floor: 2,
         type: 'TRIPLE',
@@ -122,23 +180,25 @@ export async function POST() {
     const b201B = await prisma.bed.create({ data: { roomId: r201.id, bedNumber: '201-B', isOccupied: false } });
     const b201C = await prisma.bed.create({ data: { roomId: r201.id, bedNumber: '201-C', isOccupied: false } });
 
-    const r202 = await prisma.room.create({
+    // Rooms for Property B
+    const bRoom = await prisma.room.create({
       data: {
-        roomNumber: '202',
-        floor: 2,
+        propertyId: propB.id,
+        roomNumber: '101',
+        floor: 1,
         type: 'DOUBLE',
-        status: 'MAINTENANCE',
-        defaultPrice: 6000,
-        amenitiesJson: JSON.stringify(['WiFi', 'Fan', 'Wardrobe']),
+        status: 'VACANT',
+        defaultPrice: 5500,
+        amenitiesJson: JSON.stringify(['WiFi']),
         imagesJson: JSON.stringify([]),
       },
     });
-    await prisma.bed.create({ data: { roomId: r202.id, bedNumber: '202-A', isOccupied: false } });
-    await prisma.bed.create({ data: { roomId: r202.id, bedNumber: '202-B', isOccupied: false } });
+    await prisma.bed.create({ data: { roomId: bRoom.id, bedNumber: 'B-101-A', isOccupied: false } });
 
-    // 5. Create Customers
+    // 6. Create Customers for Property A
     const c1 = await prisma.customer.create({
       data: {
+        propertyId: propA.id,
         name: 'Aarav Sharma',
         fatherName: 'Rajesh Sharma',
         motherName: 'Sunita Sharma',
@@ -162,6 +222,7 @@ export async function POST() {
 
     const c2 = await prisma.customer.create({
       data: {
+        propertyId: propA.id,
         name: 'Priya Patel',
         fatherName: 'Arvind Patel',
         motherName: 'Kokila Patel',
@@ -183,32 +244,10 @@ export async function POST() {
       },
     });
 
-    const c3 = await prisma.customer.create({
-      data: {
-        name: 'Rohan Das',
-        fatherName: 'Amit Das',
-        motherName: 'Rina Das',
-        phone: '7654321098',
-        email: 'rohan.das@gmail.com',
-        gender: 'Male',
-        dob: new Date('1997-12-05'),
-        occupation: 'Student',
-        companyName: 'PES University',
-        emergencyContactName: 'Amit Das (Father)',
-        emergencyContactPhone: '7654321097',
-        permanentAddress: '66, Salt Lake, Kolkata, West Bengal',
-        currentAddress: 'Sector 5, HSR Layout, Bengaluru',
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        pincode: '560102',
-        nationality: 'Indian',
-        bloodGroup: 'A-',
-      },
-    });
-
-    // 6. Create Linked Tenant user for Priya Patel (evaluates tenant dashboard)
+    // 7. Create Linked Tenant user for Priya Patel
     await prisma.user.create({
       data: {
+        propertyId: propA.id,
         email: 'tenant@pgnexus.com',
         name: 'Priya Patel',
         passwordHash: hashedPassword,
@@ -217,9 +256,10 @@ export async function POST() {
       },
     });
 
-    // 7. Create Allocations
+    // 8. Create Allocations (Property A)
     const alloc1 = await prisma.roomAllocation.create({
       data: {
+        propertyId: propA.id,
         customerId: c1.id,
         roomId: r101.id,
         bedId: b101A.id,
@@ -233,32 +273,19 @@ export async function POST() {
 
     const alloc2 = await prisma.roomAllocation.create({
       data: {
+        propertyId: propA.id,
         customerId: c2.id,
         roomId: r102.id,
         bedId: b102A.id,
         checkInDate: new Date('2026-06-01'),
         agreementStartDate: new Date('2026-06-01'),
-        agreementEndDate: new Date('2026-07-18'), // Expiring very soon (in 2 days)
+        agreementEndDate: new Date('2026-07-18'),
         status: 'ACTIVE',
         rentOverride: 5800,
       },
     });
 
-    const alloc3 = await prisma.roomAllocation.create({
-      data: {
-        customerId: c3.id,
-        roomId: r102.id,
-        bedId: b102B.id,
-        checkInDate: new Date('2026-01-01'),
-        agreementStartDate: new Date('2026-01-01'),
-        agreementEndDate: new Date('2026-06-30'),
-        status: 'COMPLETED',
-        actualCheckout: new Date('2026-06-30'),
-        rentOverride: 6000,
-      },
-    });
-
-    // 8. Deposits
+    // 9. Deposits (Property A)
     await prisma.deposit.create({
       data: {
         roomAllocationId: alloc1.id,
@@ -279,22 +306,10 @@ export async function POST() {
       },
     });
 
-    await prisma.deposit.create({
-      data: {
-        roomAllocationId: alloc3.id,
-        amount: 6000,
-        paidAmount: 6000,
-        pendingAmount: 0,
-        refundAmount: 5000,
-        refundDate: new Date('2026-06-30'),
-        refundStatus: 'DEDUCTED',
-        deductionReason: 'Damage to bathroom latch & key replacement (₹1000)',
-      },
-    });
-
-    // 9. Payments & Verifications
+    // 10. Payments & Verifications (Property A)
     await prisma.payment.create({
       data: {
+        propertyId: propA.id,
         customerId: c1.id,
         roomAllocationId: alloc1.id,
         dueDate: new Date('2026-05-05'),
@@ -305,8 +320,10 @@ export async function POST() {
         transactionId: 'TXN88921820',
       },
     });
+    
     await prisma.payment.create({
       data: {
+        propertyId: propA.id,
         customerId: c1.id,
         roomAllocationId: alloc1.id,
         dueDate: new Date('2026-06-05'),
@@ -317,22 +334,11 @@ export async function POST() {
         transactionId: 'TXN99213192',
       },
     });
-    await prisma.payment.create({
-      data: {
-        customerId: c1.id,
-        roomAllocationId: alloc1.id,
-        dueDate: new Date('2026-07-05'),
-        paidDate: new Date('2026-07-05'),
-        amount: 8000,
-        status: 'PAID',
-        mode: 'UPI',
-        transactionId: 'TXN20129481',
-      },
-    });
 
-    // Priya: June Paid, July Pending Verification
+    // Priya Patel: June Paid, July Pending Verification
     await prisma.payment.create({
       data: {
+        propertyId: propA.id,
         customerId: c2.id,
         roomAllocationId: alloc2.id,
         dueDate: new Date('2026-06-05'),
@@ -346,13 +352,14 @@ export async function POST() {
 
     const pendingPayment = await prisma.payment.create({
       data: {
+        propertyId: propA.id,
         customerId: c2.id,
         roomAllocationId: alloc2.id,
         dueDate: new Date('2026-07-05'),
         amount: 5800,
         status: 'PENDING',
-        screenshotUrl: '/uploads/receipts/mock-txn.jpg', // Local storage uploads path simulator
-        remarks: 'Transferred via UPI. Please verify.',
+        screenshotUrl: '/uploads/receipts/mock-txn.jpg',
+        remarks: 'Transferred via GPay.',
       },
     });
 
@@ -363,7 +370,7 @@ export async function POST() {
       },
     });
 
-    // 10. Rent Agreements
+    // 11. Rent Agreements (Property A)
     await prisma.rentAgreement.create({
       data: {
         customerId: c1.id,
@@ -372,91 +379,47 @@ export async function POST() {
         ownerName: 'Ramesh Kumar',
         ownerAadhar: '1122 3344 5566',
         ownerPan: 'ABCDE1234F',
-        propertyAddress: 'NEXUS PG, Sector 5, HSR Layout, Bengaluru, Karnataka',
+        propertyAddress: 'MagicTick HSR PG, Sector 5, Bengaluru',
         propertyDetails: 'Room 101, Single Sharing Floor 1',
         status: 'SIGNED',
         startPeriod: new Date('2026-05-01'),
         endPeriod: new Date('2027-04-30'),
         lockInMonths: 6,
         noticePeriodDays: 30,
-        electricityCharges: '₹10 per unit',
-        waterCharges: 'Flat ₹200 per month',
-        maintenanceCharges: 'Included in rent',
-        rulesText: 'No smoking, guests not allowed after 10 PM.',
+        superAdminStatus: 'GENERATED',
+        applicationPaid: true,
+        planType: 'STANDARD',
+        generatedPdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
     });
 
-    await prisma.rentAgreement.create({
-      data: {
-        customerId: c2.id,
-        roomAllocationId: alloc2.id,
-        agreementId: 'AGR-2026-102A',
-        ownerName: 'Ramesh Kumar',
-        ownerAadhar: '1122 3344 5566',
-        ownerPan: 'ABCDE1234F',
-        propertyAddress: 'NEXUS PG, Sector 5, HSR Layout, Bengaluru, Karnataka',
-        propertyDetails: 'Room 102, Double Sharing Floor 1',
-        status: 'SIGNED',
-        startPeriod: new Date('2026-06-01'),
-        endPeriod: new Date('2026-07-18'),
-        lockInMonths: 1,
-        noticePeriodDays: 15,
-      },
-    });
-
-    // 11. Documents
-    await prisma.document.create({
-      data: {
-        customerId: c1.id,
-        type: 'AADHAR_FRONT',
-        fileUrl: '/uploads/aadhaar/mock-front.jpg',
-        verifiedStatus: 'APPROVED',
-      },
-    });
-
-    await prisma.document.create({
-      data: {
-        customerId: c2.id,
-        type: 'PHOTO',
-        fileUrl: '/uploads/photos/mock-priya.jpg',
-        verifiedStatus: 'APPROVED',
-      },
-    });
-
-    // 12. Expenses
+    // 12. Expenses (Property A)
     await prisma.expense.create({
       data: {
+        propertyId: propA.id,
         category: 'ELECTRICITY',
         amount: 4500,
         date: new Date('2026-07-02'),
         remarks: 'BESCOM main grid bill for July',
-        createdById: owner.id,
+        createdById: ownerA.id,
       },
     });
 
     await prisma.expense.create({
       data: {
+        propertyId: propA.id,
         category: 'SALARY',
         amount: 8000,
         date: new Date('2026-07-01'),
         remarks: 'Receptionist Sneha Patel June salary',
-        createdById: owner.id,
+        createdById: ownerA.id,
       },
     });
 
-    await prisma.expense.create({
-      data: {
-        category: 'FOOD',
-        amount: 15000,
-        date: new Date('2026-07-10'),
-        remarks: 'Grocery & vegetables supply',
-        createdById: manager.id,
-      },
-    });
-
-    // 13. Complaints
+    // 13. Complaints (Property A)
     await prisma.complaint.create({
       data: {
+        propertyId: propA.id,
         customerId: c1.id,
         category: 'WATER',
         description: 'Flush valve leaking in room 101 bathroom.',
@@ -464,19 +427,10 @@ export async function POST() {
       },
     });
 
-    await prisma.complaint.create({
-      data: {
-        customerId: c2.id,
-        category: 'INTERNET',
-        description: 'Wi-Fi has slow speed (under 5 Mbps) since yesterday.',
-        status: 'RESOLVED',
-        resolvedAt: new Date('2026-07-12'),
-      },
-    });
-
-    // 14. Visitors
+    // 14. Visitors (Property A)
     await prisma.visitor.create({
       data: {
+        propertyId: propA.id,
         customerId: c1.id,
         visitorName: 'Sanjay Sharma',
         phone: '9898989898',
@@ -486,30 +440,22 @@ export async function POST() {
       },
     });
 
-    // 15. Audit Log
+    // 15. Audit Log (Property A)
     await prisma.auditLog.create({
       data: {
-        userId: owner.id,
+        propertyId: propA.id,
+        userId: ownerA.id,
         action: 'PRICE_OVERRIDE_APPROVED',
         details: 'Approved custom price override of ₹5800 for Priya Patel in room 102',
       },
     });
 
-    // 16. Occupancy History (Snapshots)
+    // 16. Occupancy History (Property A)
     await prisma.occupancyHistory.create({
-      data: { date: new Date('2026-03-01'), occupiedBeds: 1, totalBeds: 10, occupancyRate: 0.1 },
+      data: { propertyId: propA.id, date: new Date('2026-03-01'), occupiedBeds: 1, totalBeds: 10, occupancyRate: 0.1 },
     });
     await prisma.occupancyHistory.create({
-      data: { date: new Date('2026-04-01'), occupiedBeds: 3, totalBeds: 10, occupancyRate: 0.3 },
-    });
-    await prisma.occupancyHistory.create({
-      data: { date: new Date('2026-05-01'), occupiedBeds: 5, totalBeds: 10, occupancyRate: 0.5 },
-    });
-    await prisma.occupancyHistory.create({
-      data: { date: new Date('2026-06-01'), occupiedBeds: 7, totalBeds: 10, occupancyRate: 0.7 },
-    });
-    await prisma.occupancyHistory.create({
-      data: { date: new Date('2026-07-01'), occupiedBeds: 8, totalBeds: 10, occupancyRate: 0.8 },
+      data: { propertyId: propA.id, date: new Date('2026-07-01'), occupiedBeds: 2, totalBeds: 10, occupancyRate: 0.2 },
     });
 
     // 17. System Notification
@@ -522,7 +468,7 @@ export async function POST() {
       },
     });
 
-    return NextResponse.json({ success: true, message: 'MySQL database seeded successfully!' });
+    return NextResponse.json({ success: true, message: 'Multi-tenant MySQL database seeded successfully!' });
   } catch (error: any) {
     console.error('Seeding error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

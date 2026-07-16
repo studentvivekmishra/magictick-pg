@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyToken } from '@/lib/jwt';
 
-export async function GET() {
+// Helper to check user auth
+async function getAuthUser(request: Request) {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const token = cookieHeader
+    .split('; ')
+    .find((row) => row.startsWith('token='))
+    ?.split('=')[1];
+
+  if (!token) return null;
+  return verifyToken(token);
+}
+
+export async function GET(request: Request) {
   try {
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const now = new Date();
     
     // Pure Javascript equivalents for start/end dates
@@ -11,9 +29,18 @@ export async function GET() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
+    const isSuperAdmin = user.role === 'SUPER_ADMIN';
+    const propId = user.propertyId || '';
+
     // 1. Rooms and Beds Count
-    const totalRooms = await prisma.room.count();
-    const rooms = await prisma.room.findMany({ include: { beds: true } });
+    const totalRooms = await prisma.room.count({
+      where: isSuperAdmin ? undefined : { propertyId: propId },
+    });
+    
+    const rooms = await prisma.room.findMany({
+      where: isSuperAdmin ? undefined : { propertyId: propId },
+      include: { beds: true },
+    });
     
     let totalBeds = 0;
     let occupiedBeds = 0;
@@ -32,6 +59,7 @@ export async function GET() {
       where: {
         status: 'PAID',
         paidDate: { gte: todayStart, lte: todayEnd },
+        propertyId: isSuperAdmin ? undefined : propId,
       },
     });
     const todayCollection = todayPayments.reduce((sum, p) => sum + p.amount + p.lateFee - p.discount, 0);
@@ -41,28 +69,40 @@ export async function GET() {
       where: {
         status: 'PAID',
         paidDate: { gte: monthStart, lte: monthEnd },
+        propertyId: isSuperAdmin ? undefined : propId,
       },
     });
     const monthlyRevenue = monthlyPayments.reduce((sum, p) => sum + p.amount + p.lateFee - p.discount, 0);
 
     // Pending Collection
     const pendingPayments = await prisma.payment.findMany({
-      where: { status: 'PENDING' },
+      where: {
+        status: 'PENDING',
+        propertyId: isSuperAdmin ? undefined : propId,
+      },
     });
     const pendingCollection = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
 
     // Deposits Collected
-    const deposits = await prisma.deposit.findMany();
+    const deposits = await prisma.deposit.findMany({
+      where: isSuperAdmin ? undefined : { roomAllocation: { propertyId: propId } },
+    });
     const depositsCollected = deposits.reduce((sum, d) => sum + d.paidAmount, 0);
 
     // 3. Daily Events (Checkin, Checkout, Agreement Expiries)
     const checkinsToday = await prisma.roomAllocation.findMany({
-      where: { checkInDate: { gte: todayStart, lte: todayEnd } },
+      where: {
+        checkInDate: { gte: todayStart, lte: todayEnd },
+        propertyId: isSuperAdmin ? undefined : propId,
+      },
       include: { customer: true, room: true },
     });
 
     const checkoutsToday = await prisma.roomAllocation.findMany({
-      where: { actualCheckout: { gte: todayStart, lte: todayEnd } },
+      where: {
+        actualCheckout: { gte: todayStart, lte: todayEnd },
+        propertyId: isSuperAdmin ? undefined : propId,
+      },
       include: { customer: true, room: true },
     });
 
@@ -70,6 +110,7 @@ export async function GET() {
       where: {
         endPeriod: { gte: todayStart, lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) },
         status: 'SIGNED',
+        customer: isSuperAdmin ? undefined : { propertyId: propId },
       },
       include: { customer: true },
     });
@@ -78,6 +119,7 @@ export async function GET() {
       where: {
         agreementEndDate: { gte: todayStart, lte: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000) },
         status: 'ACTIVE',
+        propertyId: isSuperAdmin ? undefined : propId,
       },
       include: { customer: true, room: true },
     });
@@ -87,6 +129,7 @@ export async function GET() {
       where: {
         status: 'PENDING',
         dueDate: { lt: todayStart },
+        propertyId: isSuperAdmin ? undefined : propId,
       },
       include: { customer: true, roomAllocation: { include: { room: true } } },
     });
@@ -102,6 +145,7 @@ export async function GET() {
 
     // 6. Chart 2: Occupancy Trend (Last 5 Months)
     const dbOccupancyHistory = await prisma.occupancyHistory.findMany({
+      where: isSuperAdmin ? undefined : { propertyId: propId },
       orderBy: { date: 'asc' },
       take: 6,
     });
@@ -129,13 +173,17 @@ export async function GET() {
 
     // 9. Recent Activities (Audit Logs)
     const recentAuditLogs = await prisma.auditLog.findMany({
+      where: isSuperAdmin ? undefined : { propertyId: propId },
       orderBy: { createdAt: 'desc' },
       take: 5,
     });
 
     // 10. Payment verification queue size
     const verificationQueueSize = await prisma.paymentVerification.count({
-      where: { status: 'PENDING' },
+      where: {
+        status: 'PENDING',
+        payment: isSuperAdmin ? undefined : { propertyId: propId },
+      },
     });
 
     return NextResponse.json({

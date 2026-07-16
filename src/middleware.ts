@@ -46,7 +46,19 @@ export function middleware(request: NextRequest) {
     const user = JSON.parse(jsonPayload);
     const role = user.role;
 
-    // RBAC Permissions check: Tenant vs Admins
+    // 1. SUPER_ADMIN Gating
+    if (role === 'SUPER_ADMIN') {
+      if (!pathname.startsWith('/super-admin') && !pathname.startsWith('/api/super-admin') && !pathname.startsWith('/api/auth') && !pathname.startsWith('/api/seed')) {
+        if (pathname.startsWith('/api/')) {
+          // Allow Super Admins to query standard APIs across all tenants
+          return NextResponse.next();
+        }
+        return NextResponse.redirect(new URL('/super-admin', request.url));
+      }
+      return NextResponse.next();
+    }
+
+    // 2. TENANT Gating
     if (role === 'TENANT') {
       if (!pathname.startsWith('/tenant') && !pathname.startsWith('/api/complaints') && !pathname.startsWith('/api/visitors') && !pathname.startsWith('/api/tenant')) {
         if (pathname.startsWith('/api/')) {
@@ -57,26 +69,27 @@ export function middleware(request: NextRequest) {
         }
         return NextResponse.redirect(new URL('/tenant', request.url));
       }
-    } else {
-      // Admins (Owner, Manager, Receptionist) cannot enter the Tenant portal
-      if (pathname.startsWith('/tenant')) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
+      return NextResponse.next();
+    }
 
-      // Financial blocks
-      if (pathname.startsWith('/expenses') || pathname.startsWith('/analytics') || pathname.startsWith('/settings')) {
-        if (role !== 'OWNER' && role !== 'MANAGER') {
-          return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-      }
+    // 3. Regular PG Admins Gating (OWNER, MANAGER, RECEPTIONIST)
+    if (pathname.startsWith('/super-admin') || pathname.startsWith('/tenant')) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
 
-      if (pathname.startsWith('/api/expenses') || pathname.startsWith('/api/analytics') || pathname.startsWith('/api/settings')) {
-        if (role !== 'OWNER' && role !== 'MANAGER') {
-          return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
+    // Owner and Manager restriction checks
+    if (pathname.startsWith('/expenses') || pathname.startsWith('/analytics') || pathname.startsWith('/settings')) {
+      if (role !== 'OWNER' && role !== 'MANAGER') {
+        return NextResponse.redirect(new URL('/unauthorized', request.url));
+      }
+    }
+
+    if (pathname.startsWith('/api/expenses') || pathname.startsWith('/api/analytics') || pathname.startsWith('/api/settings')) {
+      if (role !== 'OWNER' && role !== 'MANAGER') {
+        return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
     }
 

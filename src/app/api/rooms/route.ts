@@ -22,7 +22,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const whereClause: any = {};
+    if (user.role !== 'SUPER_ADMIN') {
+      whereClause.propertyId = user.propertyId || '';
+    }
+
     const dbRooms = await prisma.room.findMany({
+      where: whereClause,
       include: {
         beds: true,
         allocations: {
@@ -33,7 +39,7 @@ export async function GET(request: Request) {
       orderBy: { roomNumber: 'asc' },
     });
 
-    // Parse JSON lists for SQLite compatibility
+    // Parse JSON lists for compatibility
     const parsedRooms = dbRooms.map((room) => ({
       ...room,
       amenities: JSON.parse(room.amenitiesJson || '[]'),
@@ -54,14 +60,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property association missing' }, { status: 400 });
+    }
+
     const { roomNumber, floor, type, defaultPrice, amenities, images } = await request.json();
 
     if (!roomNumber || !floor || !type || !defaultPrice) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Check if room number already exists
-    const existing = await prisma.room.findUnique({ where: { roomNumber } });
+    // Check if room number already exists in this property
+    const existing = await prisma.room.findFirst({
+      where: {
+        propertyId: user.propertyId,
+        roomNumber,
+      },
+    });
     if (existing) {
       return NextResponse.json({ error: 'Room number already exists' }, { status: 400 });
     }
@@ -71,10 +86,11 @@ export async function POST(request: Request) {
     if (type === 'DOUBLE') bedCount = 2;
     if (type === 'TRIPLE') bedCount = 3;
 
-    // Create room inside a transaction to ensure atomic bed creation
+    // Create room inside a transaction
     const room = await prisma.$transaction(async (tx) => {
       const newRoom = await tx.room.create({
         data: {
+          propertyId: user.propertyId!,
           roomNumber,
           floor: parseInt(floor),
           type,
@@ -99,6 +115,7 @@ export async function POST(request: Request) {
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'ROOM_CREATED',
         details: `Created Room ${roomNumber} (Type: ${type}) on Floor ${floor}`,
@@ -111,7 +128,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT: Modify room details or statuses (Owner/Manager can override pricing, Receptionist can change cleaning/maintenance status)
+// PUT: Modify room details or statuses
 export async function PUT(request: Request) {
   try {
     const user = await getAuthUser(request);
@@ -125,14 +142,20 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
     }
 
-    const currentRoom = await prisma.room.findUnique({ where: { id: roomId } });
+    // Scoped check
+    const currentRoom = await prisma.room.findFirst({
+      where: {
+        id: roomId,
+        propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+      },
+    });
     if (!currentRoom) {
-      return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Room not found in your property' }, { status: 404 });
     }
 
     // Role check: Pricing overrides restricted to Owner
     if (defaultPrice !== undefined && parseFloat(defaultPrice) !== currentRoom.defaultPrice) {
-      if (user.role !== 'OWNER') {
+      if (user.role !== 'OWNER' && user.role !== 'SUPER_ADMIN') {
         return NextResponse.json({ error: 'Only Owner can change default room pricing' }, { status: 403 });
       }
 
@@ -150,7 +173,7 @@ export async function PUT(request: Request) {
 
     // Option: Override specific customer stay rent price
     if (overrideAllocationId && rentOverrideValue !== undefined) {
-      if (user.role !== 'OWNER' && user.role !== 'MANAGER') {
+      if (user.role !== 'OWNER' && user.role !== 'MANAGER' && user.role !== 'SUPER_ADMIN') {
         return NextResponse.json({ error: 'Unauthorized override privilege' }, { status: 403 });
       }
 
@@ -162,6 +185,7 @@ export async function PUT(request: Request) {
       // Write to audit log
       await prisma.auditLog.create({
         data: {
+          propertyId: user.propertyId,
           userId: user.userId,
           action: 'RENT_OVERRIDDEN',
           details: `Override rent set to ₹${rentOverrideValue} for allocation ${overrideAllocationId}`,
@@ -185,6 +209,7 @@ export async function PUT(request: Request) {
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'ROOM_UPDATED',
         details: `Updated Room ${currentRoom.roomNumber} fields: ${JSON.stringify({ defaultPrice, status })}`,
@@ -201,7 +226,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = await getAuthUser(request);
-    if (!user || user.role !== 'OWNER') {
+    if (!user || (user.role !== 'OWNER' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Only Owners can delete rooms' }, { status: 403 });
     }
 
@@ -212,13 +237,16 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
     }
 
-    const room = await prisma.room.findUnique({
-      where: { id: roomId },
+    const room = await prisma.room.findFirst({
+      where: {
+        id: roomId,
+        propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+      },
       include: { beds: true },
     });
 
     if (!room) {
-      return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Room not found in your property' }, { status: 404 });
     }
 
     // Check if any beds are occupied
@@ -232,6 +260,7 @@ export async function DELETE(request: Request) {
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'ROOM_DELETED',
         details: `Deleted Room ${room.roomNumber}`,

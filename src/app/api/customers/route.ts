@@ -27,17 +27,26 @@ export async function GET(request: Request) {
     const status = searchParams.get('status') || 'ALL'; // ALL, ACTIVE, COMPLETED
 
     // Search filters: Name, Phone, Email, Nationality
+    const whereClause: any = {
+      OR: [
+        { name: { contains: search } },
+        { phone: { contains: search } },
+        { email: { contains: search } },
+      ],
+    };
+
+    if (user.role !== 'SUPER_ADMIN') {
+      whereClause.propertyId = user.propertyId || '';
+    }
+
+    if (status !== 'ALL') {
+      whereClause.allocations = {
+        some: { status: status as any },
+      };
+    }
+
     const customers = await prisma.customer.findMany({
-      where: {
-        OR: [
-          { name: { contains: search } },
-          { phone: { contains: search } },
-          { email: { contains: search } },
-        ],
-        allocations: status !== 'ALL' ? {
-          some: { status: status as any },
-        } : undefined,
-      },
+      where: whereClause,
       include: {
         allocations: {
           include: {
@@ -169,6 +178,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property ID missing from session.' }, { status: 400 });
+    }
+
     const body = await request.json();
     const {
       name,
@@ -213,6 +226,7 @@ export async function POST(request: Request) {
       // 1. Create Customer
       const newCustomer = await tx.customer.create({
         data: {
+          propertyId: user.propertyId!,
           name,
           fatherName,
           motherName,
@@ -239,6 +253,7 @@ export async function POST(request: Request) {
       // 2. Create Allocation
       const allocation = await tx.roomAllocation.create({
         data: {
+          propertyId: user.propertyId!,
           customerId: newCustomer.id,
           roomId,
           bedId,
@@ -273,6 +288,7 @@ export async function POST(request: Request) {
 
       await tx.payment.create({
         data: {
+          propertyId: user.propertyId!,
           customerId: newCustomer.id,
           roomAllocationId: allocation.id,
           dueDate: new Date(checkInDate), // Due immediately at check in
@@ -288,6 +304,7 @@ export async function POST(request: Request) {
     // Write audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'CUSTOMER_ONBOARDED',
         details: `Onboarded guest ${name} (${email}) and allocated bed ${bed.bedNumber}`,
@@ -313,8 +330,11 @@ export async function PUT(request: Request) {
 
     // Option A: Process Guest Checkout
     if (checkoutAction && allocationId) {
-      const allocation = await prisma.roomAllocation.findUnique({
-        where: { id: allocationId },
+      const allocation = await prisma.roomAllocation.findFirst({
+        where: {
+          id: allocationId,
+          propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+        },
         include: { bed: true, customer: true, deposit: true },
       });
 
@@ -358,6 +378,7 @@ export async function PUT(request: Request) {
       // Write audit log
       await prisma.auditLog.create({
         data: {
+          propertyId: user.propertyId,
           userId: user.userId,
           action: 'CUSTOMER_CHECKOUT',
           details: `Processed checkout for ${allocation.customer.name} from Bed ${allocation.bed.bedNumber}`,
@@ -369,6 +390,18 @@ export async function PUT(request: Request) {
 
     // Option B: Attach verified documents
     if (documentUpload && customerId && documentType && fileUrl) {
+      // Validate customer property
+      const targetCustomer = await prisma.customer.findFirst({
+        where: {
+          id: customerId,
+          propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+        },
+      });
+
+      if (!targetCustomer) {
+        return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+      }
+
       const doc = await prisma.document.create({
         data: {
           customerId,
@@ -391,7 +424,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = await getAuthUser(request);
-    if (!user || user.role !== 'OWNER') {
+    if (!user || (user.role !== 'OWNER' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -402,8 +435,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Customer ID is required' }, { status: 400 });
     }
 
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
+    const customer = await prisma.customer.findFirst({
+      where: {
+        id: customerId,
+        propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+      },
       include: { allocations: true },
     });
 
@@ -422,6 +458,7 @@ export async function DELETE(request: Request) {
     // Write audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'CUSTOMER_DELETED',
         details: `Deleted customer profile ${customer.name} (${customer.email})`,

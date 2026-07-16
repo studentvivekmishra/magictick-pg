@@ -19,11 +19,17 @@ async function getAuthUser(request: Request) {
 export async function GET(request: Request) {
   try {
     const user = await getAuthUser(request);
-    if (!user || (user.role !== 'OWNER' && user.role !== 'MANAGER')) {
+    if (!user || (user.role !== 'OWNER' && user.role !== 'MANAGER' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const whereClause: any = {};
+    if (user.role !== 'SUPER_ADMIN') {
+      whereClause.propertyId = user.propertyId || '';
+    }
+
     const users = await prisma.user.findMany({
+      where: whereClause,
       include: {
         customer: true,
       },
@@ -50,7 +56,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { email, name, role, customerId, password } = await request.json();
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property association missing' }, { status: 400 });
+    }
+
+    const { email, name, role, customerId, password, salaryAmount, salaryPaidStatus } = await request.json();
 
     if (!email || !name || !role) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -68,6 +78,7 @@ export async function POST(request: Request) {
 
     const newUser = await prisma.user.create({
       data: {
+        propertyId: user.propertyId!,
         email,
         name,
         role,
@@ -75,12 +86,15 @@ export async function POST(request: Request) {
         customerId: customerId || null,
         forcePasswordChange: true, // Forces password change on first login
         isActive: true,
+        salaryAmount: salaryAmount ? parseFloat(salaryAmount) : null,
+        salaryPaidStatus: salaryPaidStatus || 'PENDING',
       },
     });
 
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'USER_CREATED',
         details: `Created User ${name} (${email}) with role ${role}`,
@@ -102,7 +116,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { targetUserId, name, role, isActive, password, forceChangeComplete } = await request.json();
+    const { targetUserId, name, role, isActive, password, forceChangeComplete, salaryAmount, salaryPaidStatus } = await request.json();
 
     // Option A: Logged-in user resetting their own temporary password (first login flow)
     if (forceChangeComplete && password) {
@@ -119,7 +133,7 @@ export async function PUT(request: Request) {
     }
 
     // Option B: Administrative edits (Owner/Manager modifying other users)
-    if (user.role !== 'OWNER' && user.role !== 'MANAGER') {
+    if (user.role !== 'OWNER' && user.role !== 'MANAGER' && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -127,14 +141,21 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Target User ID is required' }, { status: 400 });
     }
 
-    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+    // Scope check
+    const targetUser = await prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+      },
+    });
+
     if (!targetUser) {
-      return NextResponse.json({ error: 'Target User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Target User not found in your property' }, { status: 404 });
     }
 
     // Role checks: Only Owners can modify roles/activity of Managers/Owners
     if (targetUser.role === 'OWNER' || targetUser.role === 'MANAGER') {
-      if (user.role !== 'OWNER') {
+      if (user.role !== 'OWNER' && user.role !== 'SUPER_ADMIN') {
         return NextResponse.json({ error: 'Only Owners can modify Owner or Manager accounts' }, { status: 403 });
       }
     }
@@ -144,6 +165,15 @@ export async function PUT(request: Request) {
     if (role) updateData.role = role;
     if (isActive !== undefined) updateData.isActive = isActive;
     
+    if (salaryAmount !== undefined) {
+      updateData.salaryAmount = salaryAmount ? parseFloat(salaryAmount) : null;
+    }
+    
+    if (salaryPaidStatus !== undefined) {
+      updateData.salaryPaidStatus = salaryPaidStatus;
+      updateData.salaryPaidDate = salaryPaidStatus === 'PAID' ? new Date() : null;
+    }
+
     if (password) {
       updateData.passwordHash = bcrypt.hashSync(password, 10);
       updateData.forcePasswordChange = true; // Flag for reset force upon login
@@ -157,6 +187,7 @@ export async function PUT(request: Request) {
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'USER_MODIFIED',
         details: `Modified User account ${targetUser.email}. Fields updated: ${Object.keys(updateData).join(', ')}`,
@@ -174,7 +205,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = await getAuthUser(request);
-    if (!user || user.role !== 'OWNER') {
+    if (!user || (user.role !== 'OWNER' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -185,9 +216,15 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+    const targetUser = await prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+      },
+    });
+
     if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'User not found in your property' }, { status: 404 });
     }
 
     // Prevent self deletion
@@ -200,6 +237,7 @@ export async function DELETE(request: Request) {
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'USER_DELETED',
         details: `Deleted User account ${targetUser.name} (${targetUser.email})`,

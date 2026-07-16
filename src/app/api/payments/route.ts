@@ -34,6 +34,10 @@ export async function GET(request: Request) {
       };
     }
 
+    if (user.role !== 'SUPER_ADMIN') {
+      whereClause.propertyId = user.propertyId || '';
+    }
+
     if (status === 'PAID' || status === 'PENDING' || status === 'OVERDUE') {
       whereClause.status = status;
     }
@@ -67,9 +71,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Find all active room allocations
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property association missing' }, { status: 400 });
+    }
+
+    // Find all active room allocations in this property
     const activeAllocations = await prisma.roomAllocation.findMany({
-      where: { status: 'ACTIVE' },
+      where: {
+        status: 'ACTIVE',
+        propertyId: user.propertyId,
+      },
       include: {
         customer: true,
         room: true,
@@ -99,6 +110,7 @@ export async function POST(request: Request) {
           const nextDueDate = new Date(now.getFullYear(), now.getMonth(), 5); // Due 5th of this month
           await tx.payment.create({
             data: {
+              propertyId: user.propertyId!,
               customerId: alloc.customerId,
               roomAllocationId: alloc.id,
               dueDate: nextDueDate,
@@ -116,6 +128,7 @@ export async function POST(request: Request) {
     // Write to audit log
     await prisma.auditLog.create({
       data: {
+        propertyId: user.propertyId,
         userId: user.userId,
         action: 'INVOICES_AUTO_GENERATED',
         details: `Batch-generated ${createdCount} monthly rent invoices for active stays`,
@@ -159,13 +172,17 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
     }
 
-    const currentPayment = await prisma.payment.findUnique({
-      where: { id: paymentId },
+    // Check scope
+    const currentPayment = await prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+      },
       include: { customer: true, verification: true },
     });
 
     if (!currentPayment) {
-      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Payment record not found in your property' }, { status: 404 });
     }
 
     // Option A: Guest submits payment proof details
@@ -203,7 +220,6 @@ export async function PUT(request: Request) {
 
     // Option B: Manager executes Verification decision (APPROVED, REJECTED)
     if (verifyAction) {
-      // Access role guard (receptionist cannot approve/reject, only upload/verify is for manager/owner)
       if (user.role === 'RECEPTIONIST') {
         return NextResponse.json({ error: 'Receptionists cannot verify payments. Owner or Manager level required.' }, { status: 403 });
       }
@@ -238,6 +254,7 @@ export async function PUT(request: Request) {
       // Write to audit log
       await prisma.auditLog.create({
         data: {
+          propertyId: user.propertyId,
           userId: user.userId,
           action: 'PAYMENT_VERIFIED',
           details: `Manager ${user.name} evaluated Payment ID ${paymentId} as ${verifyAction}`,

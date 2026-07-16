@@ -22,7 +22,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const whereClause: any = {};
+    if (user.role !== 'SUPER_ADMIN') {
+      whereClause.propertyId = user.propertyId || '';
+    }
+
     const complaints = await prisma.complaint.findMany({
+      where: whereClause,
       include: {
         customer: true,
       },
@@ -43,6 +49,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!user.propertyId) {
+      return NextResponse.json({ error: 'Property association missing' }, { status: 400 });
+    }
+
     const { customerId, category, description } = await request.json();
 
     if (!customerId || !category || !description) {
@@ -51,6 +61,7 @@ export async function POST(request: Request) {
 
     const newComplaint = await prisma.complaint.create({
       data: {
+        propertyId: user.propertyId!,
         customerId,
         category,
         description,
@@ -76,6 +87,18 @@ export async function PUT(request: Request) {
 
     if (!complaintId || !status) {
       return NextResponse.json({ error: 'Missing complaint ID or status' }, { status: 400 });
+    }
+
+    // Scope check
+    const currentComplaint = await prisma.complaint.findFirst({
+      where: {
+        id: complaintId,
+        propertyId: user.role === 'SUPER_ADMIN' ? undefined : user.propertyId || '',
+      },
+    });
+
+    if (!currentComplaint) {
+      return NextResponse.json({ error: 'Complaint not found in your property' }, { status: 404 });
     }
 
     const updated = await prisma.complaint.update({

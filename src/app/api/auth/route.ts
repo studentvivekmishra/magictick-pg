@@ -20,6 +20,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
+  // If regular client account, verify that their Property is still ACTIVE
+  if (payload.role !== 'SUPER_ADMIN' && payload.propertyId) {
+    const prop = await prisma.property.findUnique({ where: { id: payload.propertyId } });
+    if (prop && prop.status !== 'ACTIVE') {
+      return NextResponse.json({ authenticated: false, error: 'Subscription is paused or suspended.' }, { status: 403 });
+    }
+  }
+
   return NextResponse.json({ authenticated: true, user: payload });
 }
 
@@ -33,17 +41,24 @@ export async function POST(request: Request) {
     }
 
     const user = await prisma.user.findUnique({
-      value: undefined,
       where: { email },
-    } as any || { where: { email } });
+    });
 
-    if (!user) {
+    if (!user || !user.isActive) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
     const isMatch = bcrypt.compareSync(password, user.passwordHash);
     if (!isMatch) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
+
+    // If regular client account, check if their Property is ACTIVE
+    if (user.role !== 'SUPER_ADMIN' && user.propertyId) {
+      const prop = await prisma.property.findUnique({ where: { id: user.propertyId } });
+      if (prop && prop.status !== 'ACTIVE') {
+        return NextResponse.json({ error: 'This PG account is paused or suspended. Contact support.' }, { status: 403 });
+      }
     }
 
     // Sign payload
@@ -53,6 +68,7 @@ export async function POST(request: Request) {
       role: user.role as any,
       name: user.name,
       customerId: user.customerId,
+      propertyId: user.propertyId,
     });
 
     const response = NextResponse.json({
@@ -63,6 +79,7 @@ export async function POST(request: Request) {
         role: user.role,
         name: user.name,
         customerId: user.customerId,
+        propertyId: user.propertyId,
       },
     });
 

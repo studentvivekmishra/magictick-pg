@@ -50,6 +50,8 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState('RECEPTIONIST');
   const [userPassword, setUserPassword] = useState('');
   const [userActive, setUserActive] = useState(true);
+  const [userSalary, setUserSalary] = useState('');
+  const [userSalaryPaid, setUserSalaryPaid] = useState('PENDING');
   const [savingUser, setSavingUser] = useState(false);
 
   const loadDashboardData = async () => {
@@ -95,6 +97,8 @@ export default function DashboardPage() {
       const payload: any = {
         name: userName,
         role: userRole,
+        salaryAmount: userSalary || null,
+        salaryPaidStatus: userSalaryPaid,
       };
 
       if (isEdit) {
@@ -118,6 +122,8 @@ export default function DashboardPage() {
         setUserName('');
         setUserEmail('');
         setUserPassword('');
+        setUserSalary('');
+        setUserSalaryPaid('PENDING');
         loadDashboardData();
       } else {
         const err = await res.json();
@@ -342,6 +348,8 @@ export default function DashboardPage() {
                   <th className="p-3">Name</th>
                   <th className="p-3">Email</th>
                   <th className="p-3">Role</th>
+                  <th className="p-3">Salary</th>
+                  <th className="p-3">Salary Status</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Password Change</th>
                   <th className="p-3 text-right">Actions</th>
@@ -355,6 +363,18 @@ export default function DashboardPage() {
                     <td className="p-3">
                       <span className="text-[9px] font-extrabold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
                         {u.role}
+                      </span>
+                    </td>
+                    <td className="p-3 text-slate-700">₹{u.salaryAmount || 0}</td>
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                          u.salaryPaidStatus === 'PAID'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : 'bg-amber-50 text-amber-750 border border-amber-100'
+                        }`}
+                      >
+                        {u.salaryPaidStatus || 'PENDING'}
                       </span>
                     </td>
                     <td className="p-3">
@@ -380,6 +400,8 @@ export default function DashboardPage() {
                               setUserEmail(u.email);
                               setUserRole(u.role);
                               setUserActive(u.isActive);
+                              setUserSalary(u.salaryAmount || '');
+                              setUserSalaryPaid(u.salaryPaidStatus || 'PENDING');
                               setShowUserModal(u);
                             }}
                             className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-0.5"
@@ -461,7 +483,7 @@ export default function DashboardPage() {
               </div>
 
               {showUserModal !== 'CREATE' && (
-                <div className="flex items-center gap-2 py-2">
+                <div className="flex items-center gap-2 py-1">
                   <input
                     type="checkbox"
                     checked={userActive}
@@ -471,6 +493,30 @@ export default function DashboardPage() {
                   <label className="text-[10px] font-bold text-slate-600 uppercase">Account Active Status</label>
                 </div>
               )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase">Monthly Salary (₹)</label>
+                  <input
+                    type="number"
+                    value={userSalary}
+                    onChange={(e) => setUserSalary(e.target.value)}
+                    placeholder="e.g. 15000"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase">Salary Status</label>
+                  <select
+                    value={userSalaryPaid}
+                    onChange={(e) => setUserSalaryPaid(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                  >
+                    <option value="PENDING">Pending</option>
+                    <option value="PAID">Paid</option>
+                  </select>
+                </div>
+              </div>
 
               <div className="space-y-1">
                 <label className="text-[9px] font-bold text-slate-500 uppercase">

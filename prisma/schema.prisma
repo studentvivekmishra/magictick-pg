@@ -7,17 +7,53 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Represents a white-labeled PG client of MagicTick
+model Property {
+  id                  String             @id @default(uuid())
+  name                String
+  logoUrl             String?            @default("https://img.icons8.com/color/96/hostel.png")
+  address             String
+  slug                String             @unique // Subdomain or url identifier
+  status              String             @default("ACTIVE") // ACTIVE, PAUSED, SUSPENDED
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  users               User[]
+  rooms               Room[]
+  customers           Customer[]
+  allocations         RoomAllocation[]
+  payments            Payment[]
+  expenses            Expense[]
+  complaints          Complaint[]
+  visitors            Visitor[]
+  settings            SystemSettings?
+  appQueries          AppQuery[]
+  auditLogs           AuditLog[]
+  reports             Report[]
+  occupancyHistory    OccupancyHistory[]
+}
+
 // 1. User (Owners, Managers, Receptionists, and Tenants)
 model User {
   id                  String       @id @default(uuid())
   email               String       @unique
   passwordHash        String
   name                String
-  role                String       @default("RECEPTIONIST") // OWNER, MANAGER, RECEPTIONIST, TENANT
+  role                String       @default("RECEPTIONIST") // SUPER_ADMIN, OWNER, MANAGER, RECEPTIONIST, TENANT
   isActive            Boolean      @default(true)
   forcePasswordChange Boolean      @default(false)
+  
+  // Multitenancy Link
+  propertyId          String?
+  property            Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // Staff Salary Tracking fields
+  salaryAmount        Float?
+  salaryPaidStatus    String?      @default("PENDING") // PENDING, PAID
+  salaryPaidDate      DateTime?
+  
   customerId          String?      @unique                  // Optional link to Customer record (for TENANT logins)
   customer            Customer?    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   expenses            Expense[]
@@ -29,6 +65,11 @@ model User {
 // 2. SystemSettings (PG Configurations)
 model SystemSettings {
   id                  String   @id @default(uuid())
+  
+  // Link to Property
+  propertyId          String   @unique
+  property            Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   pgName              String   @default("MagicTick PG")
   pgLogoUrl           String?  @default("https://img.icons8.com/color/96/hostel.png")
   pgAddress           String   @default("HSR Layout, Sector 5, Bengaluru")
@@ -45,6 +86,8 @@ model SystemSettings {
   smtpPass            String   @default("")
   currencySymbol      String   @default("₹")
   dateFormat          String   @default("DD-MM-YYYY")
+  upiId               String   @default("owner@upi")
+  qrCodeUrl           String?  @default("https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=owner@upi")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
@@ -52,18 +95,24 @@ model SystemSettings {
 // 3. Room
 model Room {
   id             String               @id @default(uuid())
-  roomNumber     String               @unique
+  
+  propertyId     String
+  property       Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  roomNumber     String
   floor          Int
   type           String               // SINGLE, DOUBLE, TRIPLE
   status         String               @default("VACANT") // VACANT, OCCUPIED, MAINTENANCE, CLEANING, RESERVED
   defaultPrice   Float
-  amenitiesJson  String               @default("[]") @db.Text // Serialized string array for SQLite/MySQL
-  imagesJson     String               @default("[]") @db.Text // Serialized string array for SQLite/MySQL
+  amenitiesJson  String               @default("[]") @db.Text
+  imagesJson     String               @default("[]") @db.Text
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   beds           Bed[]
   allocations    RoomAllocation[]
   pricingHistory RoomPricingHistory[]
+
+  @@unique([propertyId, roomNumber])
 }
 
 // 4. Bed
@@ -79,12 +128,16 @@ model Bed {
 // 5. Customer
 model Customer {
   id                    String           @id @default(uuid())
+  
+  propertyId            String
+  property              Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   name                  String
   fatherName            String
   motherName            String
   phone                 String
   altPhone              String?
-  email                 String           @unique
+  email                 String
   gender                String
   dob                   DateTime
   occupation            String
@@ -108,11 +161,18 @@ model Customer {
   visitors              Visitor[]
   payments              Payment[]
   agreements            RentAgreement[]
+  appQueries            AppQuery[]
+
+  @@unique([propertyId, email])
 }
 
 // 6. RoomAllocation
 model RoomAllocation {
   id                 String          @id @default(uuid())
+  
+  propertyId         String
+  property           Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   customerId         String
   customer           Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
   roomId             String
@@ -136,6 +196,10 @@ model RoomAllocation {
 // 7. Payment
 model Payment {
   id                 String             @id @default(uuid())
+  
+  propertyId         String
+  property           Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   customerId         String
   customer           Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
   roomAllocationId   String
@@ -213,6 +277,12 @@ model RentAgreement {
   expiresAt          DateTime?       // Expiry time (2 days)
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
+
+  // SaaS Agreement Plan fields
+  planType           String?         // BASIC, STANDARD, PREMIUM
+  superAdminStatus   String          @default("PENDING") // PENDING, GENERATED, REJECTED
+  applicationPaid    Boolean         @default(false)
+  paymentProofUrl    String?
 }
 
 // 11. Document
@@ -241,6 +311,10 @@ model Notification {
 // 13. Expense
 model Expense {
   id          String          @id @default(uuid())
+  
+  propertyId  String
+  property    Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   category    String          // ELECTRICITY, WATER, MAINTENANCE, SALARY, INTERNET, FOOD, CLEANING, OTHERS
   amount      Float
   date        DateTime
@@ -253,6 +327,10 @@ model Expense {
 // 14. Complaint
 model Complaint {
   id          String            @id @default(uuid())
+  
+  propertyId  String
+  property    Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   customerId  String
   customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
   category    String            // WATER, ELECTRICITY, CLEANING, INTERNET, FURNITURE, OTHERS
@@ -266,6 +344,10 @@ model Complaint {
 // 15. Visitor
 model Visitor {
   id           String   @id @default(uuid())
+  
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   customerId   String
   customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   visitorName  String
@@ -280,6 +362,10 @@ model Visitor {
 // 16. AuditLog
 model AuditLog {
   id        String   @id @default(uuid())
+  
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   action    String
@@ -291,6 +377,10 @@ model AuditLog {
 // 17. Report
 model Report {
   id          String     @id @default(uuid())
+  
+  propertyId  String?
+  property    Property?  @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
   name        String
   type        String     // MONTHLY, OCCUPANCY, REVENUE, PAYMENT, PENDING, DEPOSIT, COMPLAINT, CUSTOMER, ROOM
   filePath    String?
@@ -316,8 +406,31 @@ model RoomPricingHistory {
 // 19. OccupancyHistory
 model OccupancyHistory {
   id           String   @id @default(uuid())
+  
+  propertyId   String?
+  property     Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
   date         DateTime @default(now())
   occupiedBeds Int
   totalBeds    Int
   occupancyRate Float
+}
+
+// 20. AppQuery (Technical bugs and client inquiries routed to Super Admin)
+model AppQuery {
+  id          String    @id @default(uuid())
+  
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  
+  type        String    // BUG, APP_FEEDBACK, GENERAL_QUERY
+  subject     String
+  message     String    @db.Text
+  status      String    @default("PENDING") // PENDING, RESOLVED
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

@@ -20,6 +20,8 @@ export default function LoginPage() {
         if (data.authenticated) {
           if (data.user.role === 'TENANT') {
             router.push('/tenant');
+          } else if (data.user.role === 'SUPER_ADMIN') {
+            router.push('/super-admin');
           } else {
             router.push('/dashboard');
           }
@@ -54,12 +56,14 @@ export default function LoginPage() {
       if (response.ok) {
         if (data.user.role === 'TENANT') {
           router.push('/tenant');
+        } else if (data.user.role === 'SUPER_ADMIN') {
+          router.push('/super-admin');
         } else {
           router.push('/dashboard');
         }
         router.refresh();
       } else {
-        setError(data.error || 'Invalid credentials');
+        setError(data.error || 'Invalid email or password');
       }
     } catch (err) {
       setError('Connection failure. Make sure database is seeded.');
@@ -68,11 +72,12 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoAccess = async (role: 'owner' | 'manager' | 'receptionist' | 'tenant') => {
+  const handleDemoAccess = async (role: 'superadmin' | 'owner' | 'manager' | 'receptionist' | 'tenant') => {
     setSeeding(true);
     setError('');
     
     let demoEmail = 'owner@pgnexus.com';
+    if (role === 'superadmin') demoEmail = 'superadmin@magictick.com';
     if (role === 'manager') demoEmail = 'manager@pgnexus.com';
     if (role === 'receptionist') demoEmail = 'receptionist@pgnexus.com';
     if (role === 'tenant') demoEmail = 'tenant@pgnexus.com';
@@ -98,55 +103,28 @@ export default function LoginPage() {
       <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="w-full max-w-4xl grid md:grid-cols-12 gap-8 items-center z-10">
-        
-        {/* Info Hero Col */}
-        <div className="md:col-span-7 space-y-5 hidden md:block text-slate-800">
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1.5 rounded-full w-max text-xs font-bold">
-            <Sparkles className="w-4 h-4" />
-            <span>MagicTick PG SaaS Platform</span>
-          </div>
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900">
-            Professional operations software for{' '}
-            <span className="text-blue-600">
-              Paying Guest business.
-            </span>
-          </h1>
-          <p className="text-slate-600 leading-relaxed text-sm max-w-md font-medium">
-            Manage room bed occupancies, rent agreement templates, invoice collections, visitor logging, and utility expenses with automated email notifications.
-          </p>
-
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="flex items-center gap-3 bg-white border border-slate-200 p-3.5 rounded-xl shadow-sm">
-              <ShieldCheck className="w-5 h-5 text-blue-600" />
-              <div>
-                <h4 className="font-bold text-xs text-slate-800">Local Files Upload</h4>
-                <p className="text-[10px] text-slate-500">Secure uploads folder</p>
-              </div>
+      {/* Main card box */}
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-sm z-10 relative">
+        <div className="space-y-6">
+          
+          {/* Logo & Headline */}
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center bg-blue-600 text-white p-3 rounded-2xl shadow-md shadow-blue-500/20">
+              <Building className="w-6 h-6 animate-pulse" />
             </div>
-            <div className="flex items-center gap-3 bg-white border border-slate-200 p-3.5 rounded-xl shadow-sm">
-              <Building className="w-5 h-5 text-emerald-600" />
-              <div>
-                <h4 className="font-bold text-xs text-slate-800">Tenant Logins</h4>
-                <p className="text-[10px] text-slate-500">Separate Guest Portal</p>
-              </div>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 flex items-center justify-center gap-1">
+                MagicTick PG <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">SaaS Multitenant PG Management Platform</p>
             </div>
           </div>
-        </div>
 
-        {/* Login form card col */}
-        <div className="md:col-span-5 w-full">
-          <div className="bg-white border border-slate-200 p-7 rounded-2xl shadow-md relative">
-            <div className="mb-5 text-center">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white mx-auto shadow-sm mb-2.5">
-                <Home className="w-5 h-5" />
-              </div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">Sign In</h2>
-              <p className="text-xs text-slate-500 mt-1">Access MagicTick Dashboard portal</p>
-            </div>
-
+          <div className="space-y-4">
+            
+            {/* Error alerts */}
             {error && (
-              <div className="mb-4 bg-rose-50 border border-rose-100 text-rose-600 text-xs py-2 px-3 rounded-xl font-bold">
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 font-bold p-3 rounded-2xl text-[10px] leading-relaxed text-center">
                 {error}
               </div>
             )}
@@ -208,36 +186,46 @@ export default function LoginPage() {
               </span>
             </div>
 
-            {/* Quick Demo Access selectors (updated with Tenant role) */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Quick Demo Access selectors (5-role system) */}
+            <div className="flex flex-col gap-2">
               <button
-                onClick={() => handleDemoAccess('owner')}
+                onClick={() => handleDemoAccess('superadmin')}
                 disabled={seeding || loading}
-                className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-2.5 text-center text-[10px] font-bold transition-all shadow-sm"
               >
-                {seeding ? '...' : 'Owner'}
+                {seeding ? 'Syncing...' : 'SaaS Super Admin (System Operator)'}
               </button>
-              <button
-                onClick={() => handleDemoAccess('manager')}
-                disabled={seeding || loading}
-                className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
-              >
-                {seeding ? '...' : 'Manager'}
-              </button>
-              <button
-                onClick={() => handleDemoAccess('receptionist')}
-                disabled={seeding || loading}
-                className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
-              >
-                {seeding ? '...' : 'Staff'}
-              </button>
-              <button
-                onClick={() => handleDemoAccess('tenant')}
-                disabled={seeding || loading}
-                className="bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
-              >
-                {seeding ? '...' : 'Guest Tenant'}
-              </button>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleDemoAccess('owner')}
+                  disabled={seeding || loading}
+                  className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
+                >
+                  Owner
+                </button>
+                <button
+                  onClick={() => handleDemoAccess('manager')}
+                  disabled={seeding || loading}
+                  className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
+                >
+                  Manager
+                </button>
+                <button
+                  onClick={() => handleDemoAccess('receptionist')}
+                  disabled={seeding || loading}
+                  className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
+                >
+                  Staff
+                </button>
+                <button
+                  onClick={() => handleDemoAccess('tenant')}
+                  disabled={seeding || loading}
+                  className="bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-emerald-800"
+                >
+                  Guest Tenant
+                </button>
+              </div>
             </div>
             
             {seeding && (

@@ -15,12 +15,18 @@ import {
   ChevronRight,
   Shield,
   AlertCircle,
+  Plus,
+  HelpCircle,
+  Bug,
+  Info,
+  DollarSign,
+  ChevronDown,
 } from 'lucide-react';
 
 export default function TenantDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'payments' | 'complaints' | 'settings'>('payments');
+  const [activeTab, setActiveTab] = useState<'payments' | 'agreements' | 'complaints' | 'bugs' | 'settings'>('payments');
   
   // Submit payment modal fields
   const [showPayModal, setShowPayModal] = useState<any>(null); // holds payment object
@@ -33,6 +39,29 @@ export default function TenantDashboard() {
   const [complaintCategory, setComplaintCategory] = useState('WATER');
   const [complaintDesc, setComplaintDesc] = useState('');
   const [submittingComplaint, setSubmittingComplaint] = useState(false);
+
+  // Lease Agreement Application fields
+  const [showLeaseModal, setShowLeaseModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('STANDARD');
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerAadhar, setOwnerAadhar] = useState('');
+  const [ownerPan, setOwnerPan] = useState('');
+  const [leaseStart, setLeaseStart] = useState('');
+  const [lockIn, setLockIn] = useState('6');
+  const [notice, setNotice] = useState('30');
+  const [leaseTxnId, setLeaseTxnId] = useState('');
+  const [submittingLease, setSubmittingLease] = useState(false);
+
+  // Pre-signed upload fields
+  const [showUploadLease, setShowUploadLease] = useState(false);
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
+  const [submittingUploadLease, setSubmittingUploadLease] = useState(false);
+
+  // MagicTick tech support bug fields
+  const [bugType, setBugType] = useState('BUG'); // BUG, APP_FEEDBACK, GENERAL_QUERY
+  const [bugSubject, setBugSubject] = useState('');
+  const [bugMessage, setBugMessage] = useState('');
+  const [submittingBug, setSubmittingBug] = useState(false);
 
   // Settings fields
   const [altPhone, setAltPhone] = useState('');
@@ -77,7 +106,7 @@ export default function TenantDashboard() {
           mode: payMode,
           transactionId: payTxnId,
           remarks: payRemarks,
-          screenshotUrl: '/uploads/receipts/proof-' + Date.now() + '.jpg', // Mock local storage file path
+          screenshotUrl: '/uploads/receipts/proof-' + Date.now() + '.jpg',
         }),
       });
 
@@ -109,7 +138,7 @@ export default function TenantDashboard() {
         body: JSON.stringify({
           category: complaintCategory,
           description: complaintDesc,
-          customerId: profile.id, // Linked customer ID
+          customerId: profile.id,
         }),
       });
 
@@ -124,6 +153,114 @@ export default function TenantDashboard() {
       console.error(e);
     } finally {
       setSubmittingComplaint(false);
+    }
+  };
+
+  const handleApplyAgreement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerName || !ownerAadhar || !ownerPan || !leaseStart || !leaseTxnId) {
+      return alert('Please fill in all agreement details and payment proof transaction ID');
+    }
+    setSubmittingLease(true);
+
+    const price = selectedPlan === 'BASIC' ? 199 : selectedPlan === 'STANDARD' ? 499 : 999;
+
+    try {
+      const res = await fetch('/api/tenant/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submitAgreementApplication: true,
+          ownerName,
+          ownerAadhar,
+          ownerPan,
+          propertyAddress: profile.property.address,
+          propertyDetails: `Room ${profile.allocations.find((a: any) => a.status === 'ACTIVE')?.room?.roomNumber || 'Stay'} bed allocation`,
+          startPeriod: leaseStart,
+          lockInMonths: lockIn,
+          noticePeriodDays: notice,
+          planType: selectedPlan,
+          paymentProofUrl: `txn-${leaseTxnId}`,
+        }),
+      });
+
+      if (res.ok) {
+        alert('Agreement application submitted to MagicTick team!');
+        setShowLeaseModal(false);
+        setOwnerName('');
+        setOwnerAadhar('');
+        setOwnerPan('');
+        setLeaseTxnId('');
+        loadProfile();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to submit application');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmittingLease(false);
+    }
+  };
+
+  const handleUploadExistingLease = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadedPdfUrl) return alert('PDF Document URL is required');
+    setSubmittingUploadLease(true);
+
+    try {
+      const res = await fetch('/api/tenant/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uploadExistingAgreement: true,
+          uploadedPdfUrl,
+        }),
+      });
+
+      if (res.ok) {
+        alert('Lease agreement registered successfully!');
+        setShowUploadLease(false);
+        setUploadedPdfUrl('');
+        loadProfile();
+      } else {
+        alert('Failed to register lease');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmittingUploadLease(false);
+    }
+  };
+
+  const handleSubmitBug = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bugSubject || !bugMessage) return alert('Subject and details are required');
+    setSubmittingBug(true);
+
+    try {
+      const res = await fetch('/api/tenant/queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: bugType,
+          subject: bugSubject,
+          message: bugMessage,
+        }),
+      });
+
+      if (res.ok) {
+        alert('Bug/Query reported to MagicTick developer team. We will review it shortly!');
+        setBugSubject('');
+        setBugMessage('');
+        loadProfile();
+      } else {
+        alert('Failed to submit ticket');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmittingBug(false);
     }
   };
 
@@ -166,7 +303,6 @@ export default function TenantDashboard() {
     );
   }
 
-  // Handle case where profile API returned an error payload
   if (!profile || profile.error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 bg-white border border-slate-200 rounded-2xl p-8 max-w-md mx-auto shadow-sm text-center">
@@ -181,13 +317,17 @@ export default function TenantDashboard() {
     );
   }
 
-  // Active stay calculations (using optional chaining to prevent crashes)
   const activeStay = profile.allocations?.find((a: any) => a.status === 'ACTIVE');
   const pendingBills = profile.payments?.filter((p: any) => p.status === 'PENDING') || [];
   const totalOutstanding = pendingBills.reduce((sum: number, p: any) => sum + p.amount, 0);
   const agreements = profile.agreements || [];
   const complaints = profile.complaints || [];
   const payments = profile.payments || [];
+  const appQueries = profile.appQueries || [];
+  
+  // Custom UPI Billing QR fallback generator
+  const upiId = profile.property?.settings?.upiId || 'owner@upi';
+  const upiQrUrl = profile.property?.settings?.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=${upiId}&pn=PGOwner`;
 
   return (
     <div className="space-y-6 text-xs font-semibold text-slate-800">
@@ -196,11 +336,11 @@ export default function TenantDashboard() {
       <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            Guest Portal
+            {profile.property?.name || 'Guest Portal'}
           </span>
           <h2 className="text-2xl font-extrabold text-slate-900 mt-2">Welcome Back, {profile.name}</h2>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Track stay durations, download invoices, raise service tickets, and submit receipts.
+            Track stays, verify billings, generate stamped lease agreements, and log helpdesk tickets.
           </p>
         </div>
 
@@ -211,7 +351,9 @@ export default function TenantDashboard() {
             </div>
             <div>
               <p className="text-[10px] text-slate-500 uppercase">Allocated Bed</p>
-              <h4 className="font-extrabold text-slate-800">Room {activeStay.room.roomNumber} - Bed {activeStay.bed.bedNumber.split('-')[1]}</h4>
+              <h4 className="font-extrabold text-slate-800">
+                Room {activeStay.room.roomNumber} - Bed {activeStay.bed.bedNumber.split('-')[1]}
+              </h4>
             </div>
           </div>
         )}
@@ -246,7 +388,7 @@ export default function TenantDashboard() {
         <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
             <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
-            Complaints Status
+            Active Complaints
           </span>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-slate-950">
@@ -259,7 +401,7 @@ export default function TenantDashboard() {
 
       {/* Main Tabs Navigation */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200 bg-slate-50">
+        <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
           <button
             onClick={() => setActiveTab('payments')}
             className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
@@ -270,13 +412,31 @@ export default function TenantDashboard() {
             Payments & Receipts
           </button>
           <button
+            onClick={() => setActiveTab('agreements')}
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
+              activeTab === 'agreements' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Rent Agreements
+          </button>
+          <button
             onClick={() => setActiveTab('complaints')}
             className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
               activeTab === 'complaints' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <AlertOctagon className="w-4 h-4" />
-            Complaints Register
+            Room Complaints
+          </button>
+          <button
+            onClick={() => setActiveTab('bugs')}
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
+              activeTab === 'bugs' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Bug className="w-4 h-4" />
+            MagicTick Support Desk
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -290,23 +450,10 @@ export default function TenantDashboard() {
         </div>
 
         <div className="p-6">
-          {/* Active Tab Payments */}
+          {/* TAB 1: PAYMENTS */}
           {activeTab === 'payments' && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-extrabold text-slate-900">Invoices & Payment Records</h3>
-                {agreements.length > 0 && (
-                  <a
-                    href={`/agreements?agreementId=${agreements[0].id}`}
-                    target="_blank"
-                    className="flex items-center gap-1 text-[10px] text-blue-600 font-bold hover:underline"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Download Signed Lease Agreement</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
+              <h3 className="text-sm font-extrabold text-slate-900">Invoices & Payment Records</h3>
 
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-left border-collapse">
@@ -356,14 +503,14 @@ export default function TenantDashboard() {
                                 className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1 rounded-lg"
                               >
                                 <UploadCloud className="w-3.5 h-3.5" />
-                                <span>Upload Proof</span>
+                                <span>Pay Now</span>
                               </button>
                             )}
                             {p.status === 'PAID' && (
                               <a
-                                href={`/api/payments?receiptId=${p.id}`}
+                                href={`https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`}
                                 target="_blank"
-                                className="flex items-center gap-1 text-slate-500 hover:text-slate-800"
+                                className="flex items-center gap-1 text-blue-600 hover:underline font-bold"
                               >
                                 <Download className="w-3.5 h-3.5" />
                                 <span>Receipt</span>
@@ -379,7 +526,91 @@ export default function TenantDashboard() {
             </div>
           )}
 
-          {/* Active Tab Complaints */}
+          {/* TAB 2: AGREEMENTS */}
+          {activeTab === 'agreements' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b pb-4">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 font-sans">Stamp Rent Agreement Module</h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Apply for legal lease drafting or submit pre-signed records.</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowLeaseModal(true)}
+                    className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-1.5 rounded-xl"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Apply for Stamp Lease</span>
+                  </button>
+                  <button
+                    onClick={() => setShowUploadLease(true)}
+                    className="flex items-center gap-1 bg-slate-100 border hover:bg-slate-200 text-slate-700 font-bold px-3.5 py-1.5 rounded-xl"
+                  >
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Upload Signed Agreement</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Agreements List */}
+              <div className="space-y-3">
+                <h4 className="font-extrabold text-xs text-slate-800">Agreement Database Records</h4>
+                
+                {agreements.length === 0 ? (
+                  <p className="text-slate-500 text-center py-6 bg-slate-50 rounded-xl border border-slate-200">
+                    No agreements registered. Click above to apply or upload your signed contract.
+                  </p>
+                ) : (
+                  agreements.map((a: any) => (
+                    <div key={a.id} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-extrabold text-slate-900 bg-slate-50 border px-1.5 py-0.5 rounded">
+                            {a.agreementId}
+                          </span>
+                          <span className="text-[9px] font-extrabold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                            {a.planType || 'MANUAL UPLOAD'}
+                          </span>
+                        </div>
+                        <h4 className="font-extrabold text-slate-700 mt-2">Owner: {a.ownerName}</h4>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          Period: {new Date(a.startPeriod).toLocaleDateString()} to {new Date(a.endPeriod).toLocaleDateString()}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Draft Status</p>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest block mt-1 ${
+                              a.superAdminStatus === 'GENERATED' || a.status === 'SIGNED'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                : 'bg-amber-50 text-amber-700 border border-amber-100'
+                            }`}
+                          >
+                            {a.superAdminStatus === 'PENDING' ? 'Processing by MagicTick team' : a.superAdminStatus}
+                          </span>
+                        </div>
+
+                        {(a.superAdminStatus === 'GENERATED' || a.status === 'SIGNED') && a.generatedPdfUrl && (
+                          <a
+                            href={a.generatedPdfUrl}
+                            target="_blank"
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold p-2.5 rounded-xl shadow-sm"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: COMPLAINTS */}
           {activeTab === 'complaints' && (
             <div className="grid md:grid-cols-12 gap-6 items-start">
               
@@ -427,7 +658,7 @@ export default function TenantDashboard() {
 
               {/* History list */}
               <div className="md:col-span-7 space-y-4">
-                <h4 className="font-extrabold text-xs text-slate-800">Your Past Ticket Logs</h4>
+                <h4 className="font-extrabold text-xs text-slate-800">Your Past Room Tickets</h4>
                 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {complaints.length === 0 ? (
@@ -464,7 +695,108 @@ export default function TenantDashboard() {
             </div>
           )}
 
-          {/* Active Tab Settings */}
+          {/* TAB 4: MAGIC TICK SUPPORT BUGS */}
+          {activeTab === 'bugs' && (
+            <div className="grid md:grid-cols-12 gap-6 items-start">
+              
+              {/* Form raise bug query */}
+              <div className="md:col-span-5 bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-3">
+                <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1">
+                  <Bug className="w-4 h-4 text-rose-500" />
+                  Report Software Glitch or Query
+                </h4>
+                <p className="text-[10px] text-slate-500">
+                  These tickets route directly to the **MagicTick software developer team** to debug website glitches or handle service issues.
+                </p>
+                
+                <form onSubmit={handleSubmitBug} className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase">Issue Type</label>
+                    <select
+                      value={bugType}
+                      onChange={(e) => setBugType(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                    >
+                      <option value="BUG">Technical Bug / Website Glitch</option>
+                      <option value="APP_FEEDBACK">App Feature Suggestion</option>
+                      <option value="GENERAL_QUERY">Billing / Subscription Query</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase">Subject</label>
+                    <input
+                      type="text"
+                      required
+                      value={bugSubject}
+                      onChange={(e) => setBugSubject(e.target.value)}
+                      placeholder="e.g. Receipt upload button crashes"
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase">Message Details</label>
+                    <textarea
+                      value={bugMessage}
+                      onChange={(e) => setBugMessage(e.target.value)}
+                      placeholder="Describe exactly what happened or what you need..."
+                      rows={4}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submittingBug}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg"
+                  >
+                    {submittingBug ? 'Reporting bug...' : 'Report Bug to MagicTick'}
+                  </button>
+                </form>
+              </div>
+
+              {/* History list */}
+              <div className="md:col-span-7 space-y-4">
+                <h4 className="font-extrabold text-xs text-slate-800">MagicTick Developer Support Logs</h4>
+                
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  {appQueries.length === 0 ? (
+                    <p className="text-slate-500 text-center py-6 bg-slate-50 rounded-xl border border-slate-200">
+                      No software bug tickets logged.
+                    </p>
+                  ) : (
+                    appQueries.map((q: any) => (
+                      <div key={q.id} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex justify-between items-start">
+                        <div className="space-y-1 max-w-[80%]">
+                          <span className="text-[9px] font-extrabold bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            {q.type}
+                          </span>
+                          <h4 className="font-bold text-slate-800 mt-2">{q.subject}</h4>
+                          <p className="text-xs text-slate-500">{q.message}</p>
+                          <p className="text-[10px] text-slate-400">
+                            Raised: {new Date(q.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest ${
+                            q.status === 'RESOLVED'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : 'bg-amber-50 text-amber-700 border border-amber-100'
+                          }`}
+                        >
+                          {q.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 5: SETTINGS */}
           {activeTab === 'settings' && (
             <div className="max-w-md">
               <h3 className="text-sm font-extrabold text-slate-900 mb-4 font-sans">Emergency & Secondary Contact Info</h3>
@@ -519,19 +851,32 @@ export default function TenantDashboard() {
         </div>
       </div>
 
-      {/* Submit payment proof modal */}
+      {/* Pay invoice modal */}
       {showPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans">
           <div className="bg-white border border-slate-200 max-w-sm w-full p-6 rounded-2xl shadow-xl space-y-4">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900">Upload Billing Payment Proof</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">
-                Amount: ₹{showPayModal.amount} | Cycle:{' '}
+            <div className="text-center space-y-2 border-b pb-3">
+              <h3 className="text-sm font-extrabold text-slate-900">UPI Payment Verification</h3>
+              <p className="text-[10px] text-slate-500">
+                Amount: <span className="font-extrabold text-slate-900">₹{showPayModal.amount}</span> | Cycle:{' '}
                 {new Date(showPayModal.dueDate).toLocaleString('default', { month: 'long', year: 'numeric' })}
               </p>
             </div>
 
-            <form onSubmit={handlePayProof} className="space-y-3">
+            {/* Owner UPI and QR */}
+            <div className="flex flex-col items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-150">
+              <img
+                src={upiQrUrl}
+                alt="UPI Payment QR"
+                className="w-36 h-36 border border-slate-200 p-1.5 rounded-lg bg-white"
+              />
+              <div className="text-center mt-1">
+                <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Scan & Pay to UPI ID</p>
+                <p className="font-mono text-xs text-slate-800 font-bold select-all mt-0.5">{upiId}</p>
+              </div>
+            </div>
+
+            <form onSubmit={handlePayProof} className="space-y-3.5 text-xs font-semibold">
               <div className="space-y-1">
                 <label className="text-[9px] font-bold text-slate-500 uppercase">Payment Mode</label>
                 <select
@@ -539,19 +884,20 @@ export default function TenantDashboard() {
                   onChange={(e) => setPayMode(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
                 >
-                  <option value="UPI">UPI (GPay/PhonePe/Paytm)</option>
-                  <option value="BANK_TRANSFER">Bank IMPS/NEFT</option>
-                  <option value="CASH">Handed Cash to Manager</option>
+                  <option value="UPI">UPI (GooglePay / PhonePe / Paytm)</option>
+                  <option value="BANK_TRANSFER">Bank NetBanking IMPS/NEFT</option>
+                  <option value="CASH">Handed Cash directly to Manager</option>
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-500 uppercase">Transaction ID / Reference Number</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase">Transaction ID / Ref Number</label>
                 <input
                   type="text"
+                  required
                   value={payTxnId}
                   onChange={(e) => setPayTxnId(e.target.value)}
-                  placeholder="e.g. 9821812838192"
+                  placeholder="Enter UPI reference or Bank Txn ID"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
                 />
               </div>
@@ -562,12 +908,12 @@ export default function TenantDashboard() {
                   type="text"
                   value={payRemarks}
                   onChange={(e) => setPayRemarks(e.target.value)}
-                  placeholder="e.g. Sent from father's bank account"
+                  placeholder="Sent from my father's bank account"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
                 />
               </div>
 
-              <div className="flex gap-2 justify-end pt-2">
+              <div className="flex gap-2 justify-end pt-2 border-t">
                 <button
                   type="button"
                   onClick={() => setShowPayModal(null)}
@@ -578,9 +924,214 @@ export default function TenantDashboard() {
                 <button
                   type="submit"
                   disabled={submittingPay}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-1.5 rounded-lg text-xs"
+                >
+                  {submittingPay ? 'Submitting...' : 'I Have Paid'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Rent Agreement application modal */}
+      {showLeaseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans">
+          <div className="bg-white border border-slate-200 max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">Apply for Stamp Lease Agreement</h3>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Drafted digitally by the MagicTick developer team and linked to your profile.
+              </p>
+            </div>
+
+            <form onSubmit={handleApplyAgreement} className="space-y-3.5">
+              {/* Plan Selection */}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold text-slate-500 uppercase block">Select Plan</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlan('BASIC')}
+                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                      selectedPlan === 'BASIC'
+                        ? 'border-blue-600 bg-blue-50/50 text-blue-700'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <p className="font-extrabold text-xs">Basic</p>
+                    <p className="text-[10px] mt-1">₹199</p>
+                    <p className="text-[8px] text-slate-400 mt-0.5 font-medium">Digital Sign</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlan('STANDARD')}
+                    className={`p-2.5 rounded-xl border text-center transition-all relative ${
+                      selectedPlan === 'STANDARD'
+                        ? 'border-blue-600 bg-blue-50/50 text-blue-700'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white font-extrabold text-[7px] px-1.5 py-0.5 rounded-full tracking-wider uppercase">
+                      Best
+                    </span>
+                    <p className="font-extrabold text-xs mt-0.5">Standard</p>
+                    <p className="text-[10px] mt-1">₹499</p>
+                    <p className="text-[8px] text-slate-400 mt-0.5 font-medium">E-Stamp Sign</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlan('PREMIUM')}
+                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                      selectedPlan === 'PREMIUM'
+                        ? 'border-blue-600 bg-blue-50/50 text-blue-700'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <p className="font-extrabold text-xs">Premium</p>
+                    <p className="text-[10px] mt-1">₹999</p>
+                    <p className="text-[8px] text-slate-400 mt-0.5 font-medium">Notary Deliver</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Owner details */}
+              <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase">Owner Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase">Lease Start Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={leaseStart}
+                    onChange={(e) => setLeaseStart(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase">Owner Aadhaar Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={ownerAadhar}
+                    onChange={(e) => setOwnerAadhar(e.target.value)}
+                    placeholder="12 digit Aadhaar"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase">Owner PAN Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={ownerPan}
+                    onChange={(e) => setOwnerPan(e.target.value)}
+                    placeholder="10 digit PAN"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* QR and UPI payment for Lease fee */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center gap-3">
+                <img
+                  src={upiQrUrl}
+                  alt="UPI QR"
+                  className="w-20 h-20 border p-1 rounded bg-white"
+                />
+                <div className="space-y-1">
+                  <p className="text-[9px] text-slate-500 uppercase">Drafting Fee UPI Payment</p>
+                  <p className="text-xs font-extrabold text-slate-900">
+                    Pay: ₹{selectedPlan === 'BASIC' ? 199 : selectedPlan === 'STANDARD' ? 499 : 999}
+                  </p>
+                  <p className="font-mono text-[10px] text-slate-600 select-all">{upiId}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-slate-500 uppercase">Payment Transaction ID</label>
+                <input
+                  type="text"
+                  required
+                  value={leaseTxnId}
+                  onChange={(e) => setLeaseTxnId(e.target.value)}
+                  placeholder="Enter the payment transaction ID"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowLeaseModal(false)}
+                  className="border border-slate-200 text-slate-600 font-bold px-4 py-1.5 rounded-lg text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingLease}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-1.5 rounded-lg text-xs"
+                >
+                  {submittingLease ? 'Submitting Application...' : 'Apply & Submit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upload pre-signed agreement modal */}
+      {showUploadLease && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans">
+          <div className="bg-white border border-slate-200 max-w-sm w-full p-6 rounded-2xl shadow-xl space-y-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">Upload Pre-Existing Signed Agreement</h3>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Paste the URL of your signed lease agreement PDF.
+              </p>
+            </div>
+
+            <form onSubmit={handleUploadExistingLease} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-slate-500 uppercase">Lease Document PDF URL</label>
+                <input
+                  type="url"
+                  required
+                  value={uploadedPdfUrl}
+                  onChange={(e) => setUploadedPdfUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadLease(false)}
+                  className="border border-slate-200 text-slate-600 font-bold px-4 py-1.5 rounded-lg text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingUploadLease}
                   className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-1.5 rounded-lg text-xs"
                 >
-                  {submittingPay ? 'Submitting...' : 'Submit Verification'}
+                  {submittingUploadLease ? 'Registering...' : 'Register Lease'}
                 </button>
               </div>
             </form>
