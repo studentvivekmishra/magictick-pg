@@ -50,8 +50,9 @@ export async function POST(request: Request) {
     const token = signToken({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as any,
       name: user.name,
+      customerId: user.customerId,
     });
 
     const response = NextResponse.json({
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
         email: user.email,
         role: user.role,
         name: user.name,
+        customerId: user.customerId,
       },
     });
 

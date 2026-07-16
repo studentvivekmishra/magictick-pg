@@ -5,8 +5,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development_pu
 export interface TokenPayload {
   userId: string;
   email: string;
-  role: 'OWNER' | 'MANAGER' | 'RECEPTIONIST';
+  role: 'OWNER' | 'MANAGER' | 'RECEPTIONIST' | 'TENANT';
   name: string;
+  customerId?: string | null;
 }
 
 export function signToken(payload: TokenPayload): string {
