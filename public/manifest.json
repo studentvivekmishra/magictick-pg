@@ -1,22 +1,50 @@
 {
+  "id": "/?v=1",
   "theme_color": "#4f46e5",
   "background_color": "#09090b",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay"
+  ],
   "scope": "/",
   "start_url": "/",
-  "name": "PG Management System",
-  "short_name": "PGManager",
+  "name": "MagicTick PG Management App",
+  "short_name": "MagicTickPG",
   "description": "Premium AI-Powered PG & Hostel Management SaaS Platform",
+  "lang": "en",
+  "dir": "ltr",
+  "orientation": "portrait",
+  "categories": [
+    "business",
+    "utilities"
+  ],
   "icons": [
     {
-      "src": "https://img.icons8.com/color/192/hostel.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://img.icons8.com/color/512/hostel.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/screenshot2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }
