@@ -19,6 +19,7 @@ import {
   LogOut,
   Sparkles,
   Settings,
+  X,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,9 +29,11 @@ interface SidebarProps {
     email: string;
     role: 'OWNER' | 'MANAGER' | 'RECEPTIONIST' | 'TENANT';
   } | null;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function Sidebar({ user }: SidebarProps) {
+export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -63,22 +66,45 @@ export default function Sidebar({ user }: SidebarProps) {
   const allowedMenuItems = menuItems.filter((item) => item.roles.includes(user.role));
 
   return (
-    <aside className="w-64 glass-nav h-screen fixed left-0 top-0 flex flex-col justify-between p-5 z-40 bg-slate-50 border-r border-slate-200">
-      <div className="flex flex-col gap-6">
-        {/* Logo/Branding */}
-        <div className="flex items-center gap-3 px-2 py-1">
-          <div className="bg-blue-600 text-white p-2 rounded-xl shadow-md">
-            <Home className="w-5 h-5" />
+    <>
+      {/* Backdrop overlay for mobile drawer */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 md:hidden"
+        />
+      )}
+
+      <aside
+        className={`w-64 glass-nav h-screen fixed left-0 top-0 flex flex-col justify-between p-5 z-50 bg-slate-50 border-r border-slate-200 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col gap-6">
+          {/* Logo/Branding */}
+          <div className="flex items-center justify-between px-2 py-1">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 text-white p-2 rounded-xl shadow-md">
+                <Home className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="font-extrabold text-base tracking-tight text-slate-800">
+                  MagicTick PG
+                </h1>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mt-0.5">
+                  ERP Panel
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile close button */}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 md:hidden"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div>
-            <h1 className="font-extrabold text-base tracking-tight text-slate-800">
-              MagicTick PG
-            </h1>
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mt-0.5">
-              ERP Panel
-            </span>
-          </div>
-        </div>
 
         {/* Navigation Items */}
         <nav className="flex flex-col gap-1">
@@ -129,5 +155,6 @@ export default function Sidebar({ user }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   );
 }

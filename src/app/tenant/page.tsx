@@ -1085,8 +1085,8 @@ export default function TenantDashboard() {
 
       {/* Pay invoice modal */}
       {showPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans">
-          <div className="bg-white border border-slate-200 max-w-2xl w-full p-6 rounded-2xl shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans overflow-y-auto">
+          <div className="bg-white border border-slate-200 max-w-2xl w-full p-6 rounded-2xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="text-center space-y-1 border-b pb-3">
               <h3 className="text-sm font-extrabold text-slate-900">Direct PG Payment Portal</h3>
               <p className="text-[10px] text-slate-500">
@@ -1186,8 +1186,8 @@ export default function TenantDashboard() {
 
       {/* Rent Agreement application modal */}
       {showLeaseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans">
-          <div className="bg-white border border-slate-200 max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans overflow-y-auto">
+          <div className="bg-white border border-slate-200 max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900">Apply for Stamp Lease Agreement</h3>
               <p className="text-[10px] text-slate-500 mt-0.5">
@@ -1346,8 +1346,8 @@ export default function TenantDashboard() {
 
       {/* Upload pre-signed agreement modal */}
       {showUploadLease && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans">
-          <div className="bg-white border border-slate-200 max-w-sm w-full p-6 rounded-2xl shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 font-sans overflow-y-auto">
+          <div className="bg-white border border-slate-200 max-w-sm w-full p-6 rounded-2xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900">Upload Pre-Existing Signed Agreement</h3>
               <p className="text-[10px] text-slate-500 mt-0.5">
