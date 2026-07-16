@@ -19,11 +19,12 @@ export async function GET() {
     let occupiedBeds = 0;
     rooms.forEach((room) => {
       totalBeds += room.beds.length;
-      occupiedBeds += room.beds.filter((b) => b.isOccupied).count || room.beds.filter((b) => b.isOccupied).length;
+      occupiedBeds += room.beds.filter((b) => b.isOccupied).length;
     });
 
     const vacantBeds = totalBeds - occupiedBeds;
     const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+    const maintenanceRooms = rooms.filter((r) => r.status === 'MAINTENANCE').length;
 
     // 2. Financial Collections
     // Today's Collection
@@ -91,7 +92,6 @@ export async function GET() {
     });
 
     // 5. Chart 1: Monthly Revenue Trend (Last 5 Months)
-    // We mock/group historical aggregates since our seed data is mostly current
     const revenueTrend = [
       { month: 'Mar', revenue: 12000 },
       { month: 'Apr', revenue: 18000 },
@@ -117,26 +117,23 @@ export async function GET() {
       { name: 'Triple Sharing', value: 5000, color: '#ec4899' },
     ];
 
-    // 8. Recent Activities (Complaints, Audit Logs, Visitor entries)
-    const recentComplaints = await prisma.complaint.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 3,
-      include: { customer: true },
-    });
+    // 8. Room Types Distribution (Bar Chart data for frontend)
+    const singleCount = rooms.filter((r) => r.type === 'SINGLE').length;
+    const doubleCount = rooms.filter((r) => r.type === 'DOUBLE').length;
+    const tripleCount = rooms.filter((r) => r.type === 'TRIPLE').length;
+    const roomDistribution = [
+      { type: 'Single', count: singleCount },
+      { type: 'Double', count: doubleCount },
+      { type: 'Triple', count: tripleCount },
+    ];
 
-    const recentVisitors = await prisma.visitor.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 3,
-      include: { customer: true },
-    });
-
+    // 9. Recent Activities (Audit Logs)
     const recentAuditLogs = await prisma.auditLog.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 3,
-      include: { user: true },
+      take: 5,
     });
 
-    // 9. Payment verification queue size
+    // 10. Payment verification queue size
     const verificationQueueSize = await prisma.paymentVerification.count({
       where: { status: 'PENDING' },
     });
@@ -148,6 +145,7 @@ export async function GET() {
         occupiedBeds,
         vacantBeds,
         occupancyRate,
+        maintenanceRooms,
       },
       financials: {
         todayCollection,
@@ -172,12 +170,9 @@ export async function GET() {
           { month: 'Jul', rate: occupancyRate || 80 },
         ],
         categoryIncome,
+        roomDistribution,
       },
-      recent: {
-        complaints: recentComplaints,
-        visitors: recentVisitors,
-        auditLogs: recentAuditLogs,
-      },
+      recentActivity: recentAuditLogs,
       verificationQueueSize,
     });
   } catch (error: any) {
