@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  
+  --primary: #2563eb; /* Corporate Blue */
+  --primary-foreground: #ffffff;
+  
+  --secondary: #f1f5f9; /* Light Gray */
+  --secondary-foreground: #0f172a;
+  
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  
+  --accent: #ecfdf5; /* Emerald Accent */
+  --accent-foreground: #10b981;
+  
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+  --radius: 0.5rem;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism sidebar & header */
+.glass-nav {
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.3);
+}
+
+/* Input focus style */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+/* Status dots glow */
+.glow-success {
+  box-shadow: 0 0 6px #10b981;
+}
+
+.glow-warning {
+  box-shadow: 0 0 6px #f59e0b;
+}
+
+.glow-danger {
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.glow-primary {
+  box-shadow: 0 0 6px #2563eb;
+}

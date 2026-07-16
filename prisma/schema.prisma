@@ -1,0 +1,323 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. User (Owners, Managers, Receptionists, and Tenants)
+model User {
+  id                  String       @id @default(uuid())
+  email               String       @unique
+  passwordHash        String
+  name                String
+  role                String       @default("RECEPTIONIST") // OWNER, MANAGER, RECEPTIONIST, TENANT
+  isActive            Boolean      @default(true)
+  forcePasswordChange Boolean      @default(false)
+  customerId          String?      @unique                  // Optional link to Customer record (for TENANT logins)
+  customer            Customer?    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  expenses            Expense[]
+  auditLogs           AuditLog[]
+  reports             Report[]
+  pricingLogs         RoomPricingHistory[]
+}
+
+// 2. SystemSettings (PG Configurations)
+model SystemSettings {
+  id                  String   @id @default(uuid())
+  pgName              String   @default("MagicTick PG")
+  pgLogoUrl           String?  @default("https://img.icons8.com/color/96/hostel.png")
+  pgAddress           String   @default("HSR Layout, Sector 5, Bengaluru")
+  singleSharingPrice  Float    @default(8000)
+  doubleSharingPrice  Float    @default(6000)
+  tripleSharingPrice  Float    @default(5000)
+  defaultDeposit      Float    @default(12000)
+  rentDueDateDay      Int      @default(5)
+  lateFeeDaysGrace    Int      @default(3)
+  lateFeeFlatRate     Float    @default(500)
+  smtpHost            String   @default("smtp.gmail.com")
+  smtpPort            Int      @default(587)
+  smtpUser            String   @default("")
+  smtpPass            String   @default("")
+  currencySymbol      String   @default("₹")
+  dateFormat          String   @default("DD-MM-YYYY")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// 3. Room
+model Room {
+  id             String               @id @default(uuid())
+  roomNumber     String               @unique
+  floor          Int
+  type           String               // SINGLE, DOUBLE, TRIPLE
+  status         String               @default("VACANT") // VACANT, OCCUPIED, MAINTENANCE, CLEANING, RESERVED
+  defaultPrice   Float
+  amenitiesJson  String               @default("[]") @db.Text // Serialized string array for SQLite/MySQL
+  imagesJson     String               @default("[]") @db.Text // Serialized string array for SQLite/MySQL
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  beds           Bed[]
+  allocations    RoomAllocation[]
+  pricingHistory RoomPricingHistory[]
+}
+
+// 4. Bed
+model Bed {
+  id          String           @id @default(uuid())
+  roomId      String
+  room        Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  bedNumber   String
+  isOccupied  Boolean          @default(false)
+  allocations RoomAllocation[]
+}
+
+// 5. Customer
+model Customer {
+  id                    String           @id @default(uuid())
+  name                  String
+  fatherName            String
+  motherName            String
+  phone                 String
+  altPhone              String?
+  email                 String           @unique
+  gender                String
+  dob                   DateTime
+  occupation            String
+  companyName           String?
+  emergencyContactName  String
+  emergencyContactPhone String
+  permanentAddress      String
+  currentAddress        String
+  city                  String
+  state                 String
+  pincode               String
+  nationality           String           @default("Indian")
+  bloodGroup            String?
+  photoUrl              String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  user                  User?            // Linked User account (one-to-one) for login
+  allocations           RoomAllocation[]
+  documents             Document[]
+  complaints            Complaint[]
+  visitors              Visitor[]
+  payments              Payment[]
+  agreements            RentAgreement[]
+}
+
+// 6. RoomAllocation
+model RoomAllocation {
+  id                 String          @id @default(uuid())
+  customerId         String
+  customer           Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  roomId             String
+  room               Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  bedId              String
+  bed                Bed             @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  checkInDate        DateTime
+  agreementStartDate DateTime
+  agreementEndDate   DateTime
+  expectedCheckout   DateTime?
+  actualCheckout     DateTime?
+  status             String          @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  rentOverride       Float?          // Custom price override approved by owner
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  payments           Payment[]
+  deposit            Deposit?
+  agreements         RentAgreement[]
+}
+
+// 7. Payment
+model Payment {
+  id                 String             @id @default(uuid())
+  customerId         String
+  customer           Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  roomAllocationId   String
+  roomAllocation     RoomAllocation     @relation(fields: [roomAllocationId], references: [id], onDelete: Cascade)
+  dueDate            DateTime
+  paidDate           DateTime?
+  amount             Float
+  status             String             @default("PENDING") // PAID, PENDING, OVERDUE, PARTIAL
+  mode               String?            // UPI, CASH, BANK_TRANSFER, CARD
+  referenceNumber    String?
+  transactionId      String?
+  screenshotUrl      String?
+  lateFee            Float              @default(0.0)
+  discount           Float              @default(0.0)
+  remarks            String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  verification       PaymentVerification?
+}
+
+// 8. PaymentVerification
+model PaymentVerification {
+  id            String             @id @default(uuid())
+  paymentId     String             @unique
+  payment       Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  status        String             @default("PENDING") // PENDING, APPROVED, REJECTED, CLARIFICATION_NEEDED
+  managerRemarks String?
+  verifiedAt    DateTime?
+  verifiedBy    String?            // Manager name/ID
+  createdAt     DateTime           @default(now())
+}
+
+// 9. Deposit
+model Deposit {
+  id               String        @id @default(uuid())
+  roomAllocationId String        @unique
+  roomAllocation   RoomAllocation @relation(fields: [roomAllocationId], references: [id], onDelete: Cascade)
+  amount           Float
+  paidAmount       Float         @default(0.0)
+  pendingAmount    Float
+  refundAmount     Float?
+  refundDate       DateTime?
+  refundStatus     String        @default("PENDING") // PENDING, REFUNDED, DEDUCTED
+  deductionReason  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+// 10. RentAgreement
+model RentAgreement {
+  id                 String          @id @default(uuid())
+  customerId         String
+  customer           Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  roomAllocationId   String
+  roomAllocation     RoomAllocation  @relation(fields: [roomAllocationId], references: [id], onDelete: Cascade)
+  agreementId        String          @unique // Readable ID
+  ownerName          String
+  ownerAadhar        String
+  ownerPan           String
+  ownerSignatureUrl  String?
+  propertyAddress    String
+  propertyDetails    String
+  tenantSignatureUrl String?
+  status             String          @default("PENDING") // PENDING, SIGNED, EXPIRED
+  startPeriod        DateTime
+  endPeriod          DateTime
+  lockInMonths       Int
+  noticePeriodDays   Int
+  electricityCharges String          @default("As per sub-meter")
+  waterCharges       String          @default("Flat ₹200")
+  maintenanceCharges String          @default("Included")
+  rulesText          String?         @db.Text
+  qrCodeUrl          String?
+  generatedPdfUrl    String?
+  expiresAt          DateTime?       // Expiry time (2 days)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
+
+// 11. Document
+model Document {
+  id             String         @id @default(uuid())
+  customerId     String
+  customer       Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type           String         // AADHAR_FRONT, AADHAR_BACK, PAN, PASSPORT, DRIVING_LICENSE, PHOTO, etc.
+  fileUrl        String
+  verifiedStatus String         @default("PENDING") // PENDING, APPROVED, REJECTED
+  remarks        String?
+  createdAt      DateTime       @default(now())
+}
+
+// 12. Notification
+model Notification {
+  id         String           @id @default(uuid())
+  title      String
+  message    String
+  type       String           @default("INFO") // INFO, WARNING, SUCCESS
+  targetRole String           @default("ALL") // OWNER, MANAGER, RECEPTIONIST, ALL
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+}
+
+// 13. Expense
+model Expense {
+  id          String          @id @default(uuid())
+  category    String          // ELECTRICITY, WATER, MAINTENANCE, SALARY, INTERNET, FOOD, CLEANING, OTHERS
+  amount      Float
+  date        DateTime
+  remarks     String?
+  createdById String
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+}
+
+// 14. Complaint
+model Complaint {
+  id          String            @id @default(uuid())
+  customerId  String
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  category    String            // WATER, ELECTRICITY, CLEANING, INTERNET, FURNITURE, OTHERS
+  description String            @db.Text
+  status      String            @default("PENDING") // PENDING, IN_PROGRESS, RESOLVED, CLOSED
+  resolvedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+// 15. Visitor
+model Visitor {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  visitorName  String
+  phone        String
+  relation     String
+  entryTime    DateTime
+  exitTime     DateTime?
+  photoUrl     String?
+  createdAt    DateTime @default(now())
+}
+
+// 16. AuditLog
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String   @db.Text
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+// 17. Report
+model Report {
+  id          String     @id @default(uuid())
+  name        String
+  type        String     // MONTHLY, OCCUPANCY, REVENUE, PAYMENT, PENDING, DEPOSIT, COMPLAINT, CUSTOMER, ROOM
+  filePath    String?
+  format      String     // PDF, EXCEL, CSV
+  createdById String
+  createdBy   User       @relation(fields: [createdById], references: [id])
+  createdAt   DateTime   @default(now())
+}
+
+// 18. RoomPricingHistory
+model RoomPricingHistory {
+  id          String   @id @default(uuid())
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  changedById String
+  changedBy   User     @relation(fields: [changedById], references: [id])
+  oldPrice    Float
+  newPrice    Float
+  reason      String
+  createdAt   DateTime @default(now())
+}
+
+// 19. OccupancyHistory
+model OccupancyHistory {
+  id           String   @id @default(uuid())
+  date         DateTime @default(now())
+  occupiedBeds Int
+  totalBeds    Int
+  occupancyRate Float
+}
