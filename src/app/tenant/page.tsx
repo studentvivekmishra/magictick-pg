@@ -14,6 +14,7 @@ import {
   ExternalLink,
   ChevronRight,
   Shield,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function TenantDashboard() {
@@ -46,9 +47,11 @@ export default function TenantDashboard() {
       const data = await res.json();
       setProfile(data);
 
-      setAltPhone(data.altPhone || '');
-      setEmergencyName(data.emergencyContactName || '');
-      setEmergencyPhone(data.emergencyContactPhone || '');
+      if (data && !data.error) {
+        setAltPhone(data.altPhone || '');
+        setEmergencyName(data.emergencyContactName || '');
+        setEmergencyPhone(data.emergencyContactPhone || '');
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -154,19 +157,37 @@ export default function TenantDashboard() {
     }
   };
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
         <Home className="w-8 h-8 animate-bounce text-blue-600" />
-        <p className="text-sm font-semibold text-muted-foreground">Syncing guest profile dashboard...</p>
+        <p className="text-sm font-semibold text-slate-500">Syncing guest profile dashboard...</p>
       </div>
     );
   }
 
-  // Active stay calculations
-  const activeStay = profile.allocations.find((a: any) => a.status === 'ACTIVE');
-  const pendingBills = profile.payments.filter((p: any) => p.status === 'PENDING');
+  // Handle case where profile API returned an error payload
+  if (!profile || profile.error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 bg-white border border-slate-200 rounded-2xl p-8 max-w-md mx-auto shadow-sm text-center">
+        <AlertCircle className="w-10 h-10 text-rose-500" />
+        <div>
+          <h3 className="font-extrabold text-sm text-slate-900">Portal Syncing Error</h3>
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            {profile?.error || 'Unable to load tenant customer details. Please verify your account link.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Active stay calculations (using optional chaining to prevent crashes)
+  const activeStay = profile.allocations?.find((a: any) => a.status === 'ACTIVE');
+  const pendingBills = profile.payments?.filter((p: any) => p.status === 'PENDING') || [];
   const totalOutstanding = pendingBills.reduce((sum: number, p: any) => sum + p.amount, 0);
+  const agreements = profile.agreements || [];
+  const complaints = profile.complaints || [];
+  const payments = profile.payments || [];
 
   return (
     <div className="space-y-6 text-xs font-semibold text-slate-800">
@@ -229,7 +250,7 @@ export default function TenantDashboard() {
           </span>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-slate-950">
-              {profile.complaints.filter((c: any) => c.status === 'PENDING').length}
+              {complaints.filter((c: any) => c.status === 'PENDING').length}
             </h3>
             <p className="text-[10px] text-slate-500 mt-0.5">Pending ticket resolutions</p>
           </div>
@@ -274,9 +295,9 @@ export default function TenantDashboard() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-extrabold text-slate-900">Invoices & Payment Records</h3>
-                {profile.agreements.length > 0 && (
+                {agreements.length > 0 && (
                   <a
-                    href={`/agreements?agreementId=${profile.agreements[0].id}`}
+                    href={`/agreements?agreementId=${agreements[0].id}`}
                     target="_blank"
                     className="flex items-center gap-1 text-[10px] text-blue-600 font-bold hover:underline"
                   >
@@ -299,14 +320,14 @@ export default function TenantDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {profile.payments.length === 0 ? (
+                    {payments.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="p-4 text-center text-slate-500">
                           No bills generated yet.
                         </td>
                       </tr>
                     ) : (
-                      profile.payments.map((p: any) => (
+                      payments.map((p: any) => (
                         <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/50">
                           <td className="p-3 font-bold text-slate-800">
                             {new Date(p.dueDate).toLocaleString('default', { month: 'long', year: 'numeric' })}
@@ -409,12 +430,12 @@ export default function TenantDashboard() {
                 <h4 className="font-extrabold text-xs text-slate-800">Your Past Ticket Logs</h4>
                 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                  {profile.complaints.length === 0 ? (
+                  {complaints.length === 0 ? (
                     <p className="text-slate-500 text-center py-6 bg-slate-50 rounded-xl border border-slate-200">
                       No complaints raised yet.
                     </p>
                   ) : (
-                    profile.complaints.map((c: any) => (
+                    complaints.map((c: any) => (
                       <div key={c.id} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex justify-between items-start">
                         <div className="space-y-1 max-w-[80%]">
                           <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
