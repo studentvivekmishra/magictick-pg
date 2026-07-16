@@ -79,6 +79,13 @@ export async function POST(request: Request) {
       smtpPass: body.smtpPass !== undefined ? body.smtpPass : undefined,
       currencySymbol: body.currencySymbol || undefined,
       dateFormat: body.dateFormat || undefined,
+      upiId: body.upiId !== undefined ? body.upiId : undefined,
+      qrCodeUrl: body.qrCodeUrl !== undefined ? body.qrCodeUrl : undefined,
+      wifiName: body.wifiName !== undefined ? body.wifiName : undefined,
+      wifiPassword: body.wifiPassword !== undefined ? body.wifiPassword : undefined,
+      bankAccountName: body.bankAccountName !== undefined ? body.bankAccountName : undefined,
+      bankAccountNumber: body.bankAccountNumber !== undefined ? body.bankAccountNumber : undefined,
+      bankIfscCode: body.bankIfscCode !== undefined ? body.bankIfscCode : undefined,
     };
 
     let settings;

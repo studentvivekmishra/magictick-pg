@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const [showUserModal, setShowUserModal] = useState<any>(null); // 'CREATE' or user object for EDIT
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
-  const [userRole, setUserRole] = useState('RECEPTIONIST');
+  const [userRole, setUserRole] = useState('MANAGER');
   const [userPassword, setUserPassword] = useState('');
   const [userActive, setUserActive] = useState(true);
   const [userSalary, setUserSalary] = useState('');
@@ -476,7 +476,6 @@ export default function DashboardPage() {
                   onChange={(e) => setUserRole(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
                 >
-                  <option value="RECEPTIONIST">Receptionist Staff</option>
                   <option value="MANAGER">Manager Admin</option>
                   <option value="OWNER">Owner Master</option>
                 </select>

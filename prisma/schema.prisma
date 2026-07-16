@@ -38,6 +38,7 @@ model User {
   email               String       @unique
   passwordHash        String
   name                String
+  phone               String?
   role                String       @default("RECEPTIONIST") // SUPER_ADMIN, OWNER, MANAGER, RECEPTIONIST, TENANT
   isActive            Boolean      @default(true)
   forcePasswordChange Boolean      @default(false)
@@ -88,6 +89,11 @@ model SystemSettings {
   dateFormat          String   @default("DD-MM-YYYY")
   upiId               String   @default("owner@upi")
   qrCodeUrl           String?  @default("https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=owner@upi")
+  wifiName            String?  @default("MagicTick_Guest")
+  wifiPassword        String?  @default("guest@123")
+  bankAccountName     String   @default("MagicTick PG Services")
+  bankAccountNumber   String   @default("1234567890")
+  bankIfscCode        String   @default("UTIB0000123")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }

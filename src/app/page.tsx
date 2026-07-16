@@ -72,14 +72,13 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoAccess = async (role: 'superadmin' | 'owner' | 'manager' | 'receptionist' | 'tenant') => {
+  const handleDemoAccess = async (role: 'superadmin' | 'owner' | 'manager' | 'tenant') => {
     setSeeding(true);
     setError('');
     
     let demoEmail = 'owner@pgnexus.com';
     if (role === 'superadmin') demoEmail = 'superadmin@magictick.com';
     if (role === 'manager') demoEmail = 'manager@pgnexus.com';
-    if (role === 'receptionist') demoEmail = 'receptionist@pgnexus.com';
     if (role === 'tenant') demoEmail = 'tenant@pgnexus.com';
 
     try {
@@ -196,7 +195,7 @@ export default function LoginPage() {
                 {seeding ? 'Syncing...' : 'SaaS Super Admin (System Operator)'}
               </button>
               
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => handleDemoAccess('owner')}
                   disabled={seeding || loading}
@@ -212,18 +211,11 @@ export default function LoginPage() {
                   Manager
                 </button>
                 <button
-                  onClick={() => handleDemoAccess('receptionist')}
-                  disabled={seeding || loading}
-                  className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-slate-700"
-                >
-                  Staff
-                </button>
-                <button
                   onClick={() => handleDemoAccess('tenant')}
                   disabled={seeding || loading}
                   className="bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200 rounded-xl py-2 text-center text-[10px] font-bold transition-all text-emerald-800"
                 >
-                  Guest Tenant
+                  Tenant
                 </button>
               </div>
             </div>

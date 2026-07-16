@@ -53,7 +53,7 @@ export default function Sidebar({ user }: SidebarProps) {
     { name: 'Customers', path: '/customers', icon: Users, roles: ['OWNER', 'MANAGER', 'RECEPTIONIST'] },
     { name: 'Payments', path: '/payments', icon: CreditCard, roles: ['OWNER', 'MANAGER', 'RECEPTIONIST'] },
     { name: 'Rent Agreements', path: '/agreements', icon: FileText, roles: ['OWNER', 'MANAGER'] },
-    { name: 'Complaints', path: '/complaints', icon: AlertOctagon, roles: ['OWNER', 'MANAGER', 'RECEPTIONIST', 'TENANT'] },
+    { name: 'Complaints', path: '/complaints', icon: AlertOctagon, roles: ['OWNER', 'MANAGER', 'RECEPTIONIST'] },
     { name: 'Expenses', path: '/expenses', icon: DollarSign, roles: ['OWNER', 'MANAGER'] },
     { name: 'Visitors Log', path: '/visitors', icon: UserCheck, roles: ['OWNER', 'MANAGER', 'RECEPTIONIST'] },
     { name: 'Analytics', path: '/analytics', icon: TrendingUp, roles: ['OWNER', 'MANAGER'] },

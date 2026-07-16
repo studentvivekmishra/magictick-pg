@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/jwt';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Helper to check user auth
 async function getAuthUser(request: Request) {
   const cookieHeader = request.headers.get('cookie') || '';
@@ -57,7 +60,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Customer profile not found' }, { status: 404 });
     }
 
-    return NextResponse.json(customer);
+    // Query active property managers/owners contact details
+    const managers = await prisma.user.findMany({
+      where: {
+        propertyId: customer.propertyId,
+        role: { in: ['OWNER', 'MANAGER'] },
+        isActive: true,
+      },
+      select: {
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+      },
+    });
+
+    return NextResponse.json({
+      ...customer,
+      managers,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -170,9 +191,20 @@ export async function PUT(request: Request) {
     const updated = await prisma.customer.update({
       where: { id: user.customerId },
       data: {
-        altPhone: altPhone || undefined,
-        emergencyContactName: emergencyContactName || undefined,
-        emergencyContactPhone: emergencyContactPhone || undefined,
+        name: name || undefined,
+        phone: phone || undefined,
+        fatherName: fatherName || undefined,
+        motherName: motherName || undefined,
+        occupation: occupation || undefined,
+        companyName: companyName !== undefined ? companyName : undefined,
+        permanentAddress: permanentAddress || undefined,
+        currentAddress: currentAddress || undefined,
+        pincode: pincode || undefined,
+        nationality: nationality || undefined,
+        bloodGroup: bloodGroup !== undefined ? bloodGroup : undefined,
+        altPhone: altPhone !== undefined ? altPhone : undefined,
+        emergencyContactName: emergencyContactName !== undefined ? emergencyContactName : undefined,
+        emergencyContactPhone: emergencyContactPhone !== undefined ? emergencyContactPhone : undefined,
       },
     });
 

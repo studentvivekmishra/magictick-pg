@@ -141,8 +141,9 @@ export default function CustomersPage() {
   const [newCurrAddress, setNewCurrAddress] = useState('');
   const [newPincode, setNewPincode] = useState('');
   const [newNationality, setNewNationality] = useState('Indian');
-  const [newBloodGroup, setNewBloodGroup] = useState('O+');
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [createTenantLogin, setCreateTenantLogin] = useState(false);
+  const [tenantPassword, setTenantPassword] = useState('');
 
   // Allocation wizard inputs
   const [newCheckinDate, setNewCheckinDate] = useState('');
@@ -250,7 +251,6 @@ export default function CustomersPage() {
           nationality: newNationality,
           bloodGroup: newBloodGroup,
           photoUrl: newPhotoUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
-          
           roomId: selectedRoomId,
           bedId: selectedBedId,
           checkInDate: newCheckinDate,
@@ -258,6 +258,8 @@ export default function CustomersPage() {
           agreementEndDate: newLeaseEnd,
           rentOverride: newRentOverride || null,
           depositAmount: newDepositAmount || '0',
+          createTenantLogin,
+          tenantPassword,
         }),
       });
 
@@ -279,6 +281,8 @@ export default function CustomersPage() {
         setNewPermAddress('');
         setNewCurrAddress('');
         setNewPincode('');
+        setCreateTenantLogin(false);
+        setTenantPassword('');
         setNewPhotoUrl('');
         setSelectedRoomId('');
         setSelectedBedId('');
@@ -987,6 +991,46 @@ export default function CustomersPage() {
                       className="w-full bg-background border border-border rounded-xl py-2 px-3 text-xs text-foreground"
                     />
                   </div>
+                </div>
+
+                {/* Tenant Login Account Creation options */}
+                <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-2xl space-y-3 mt-4 text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="createTenantLogin"
+                      checked={createTenantLogin}
+                      onChange={(e) => setCreateTenantLogin(e.target.checked)}
+                      className="rounded text-indigo-600"
+                    />
+                    <label htmlFor="createTenantLogin" className="text-xs font-bold text-indigo-950 uppercase tracking-wider cursor-pointer">
+                      Provision Tenant Login Account ID & Password
+                    </label>
+                  </div>
+                  {createTenantLogin && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Login Email (Uses field above)</label>
+                        <input
+                          type="text"
+                          disabled
+                          value={newEmail}
+                          className="w-full bg-slate-100 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tenant password *</label>
+                        <input
+                          type="password"
+                          required={createTenantLogin}
+                          value={tenantPassword}
+                          onChange={(e) => setTenantPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full bg-background border border-border rounded-xl py-2 px-3 text-xs text-foreground"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

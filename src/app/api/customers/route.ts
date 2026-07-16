@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/jwt';
+import bcrypt from 'bcryptjs';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // Helper to check user auth
 async function getAuthUser(request: Request) {
@@ -213,6 +217,10 @@ export async function POST(request: Request) {
       agreementEndDate,
       rentOverride,
       depositAmount,
+
+      // Login creation details
+      createTenantLogin,
+      tenantPassword,
     } = body;
 
     // Check availability of bed
@@ -249,6 +257,30 @@ export async function POST(request: Request) {
           photoUrl,
         },
       });
+
+      // 1b. Automatically create User Login Credentials if toggled
+      if (createTenantLogin) {
+        const existingUser = await tx.user.findUnique({
+          where: { email },
+        });
+
+        if (existingUser) {
+          throw new Error('A login account with this email address already exists.');
+        }
+
+        const hashedPassword = bcrypt.hashSync(tenantPassword || 'password123', 10);
+        await tx.user.create({
+          data: {
+            propertyId: user.propertyId!,
+            email,
+            name,
+            passwordHash: hashedPassword,
+            role: 'TENANT',
+            customerId: newCustomer.id,
+            isActive: true,
+          },
+        });
+      }
 
       // 2. Create Allocation
       const allocation = await tx.roomAllocation.create({

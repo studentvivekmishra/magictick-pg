@@ -46,6 +46,15 @@ export default function SettingsPage() {
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPass, setSmtpPass] = useState('');
 
+  // Settlement & WiFi Settings
+  const [upiId, setUpiId] = useState('');
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [wifiName, setWifiName] = useState('');
+  const [wifiPassword, setWifiPassword] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIfscCode, setBankIfscCode] = useState('');
+
   const loadSettings = async () => {
     try {
       const res = await fetch('/api/settings');
@@ -65,6 +74,13 @@ export default function SettingsPage() {
       setSmtpPort(data.smtpPort.toString());
       setSmtpUser(data.smtpUser);
       setSmtpPass(data.smtpPass);
+      setUpiId(data.upiId || '');
+      setQrCodeUrl(data.qrCodeUrl || '');
+      setWifiName(data.wifiName || '');
+      setWifiPassword(data.wifiPassword || '');
+      setBankAccountName(data.bankAccountName || '');
+      setBankAccountNumber(data.bankAccountNumber || '');
+      setBankIfscCode(data.bankIfscCode || '');
     } catch (e) {
       console.error(e);
     } finally {
@@ -99,6 +115,13 @@ export default function SettingsPage() {
           smtpPort,
           smtpUser,
           smtpPass,
+          upiId,
+          qrCodeUrl,
+          wifiName,
+          wifiPassword,
+          bankAccountName,
+          bankAccountNumber,
+          bankIfscCode,
         }),
       });
 
@@ -319,6 +342,94 @@ export default function SettingsPage() {
                 <span>
                   Configure this using standard Hostinger SMTP or Gmail App Passwords. If left empty, automated mail notifications fall back to local log files simulation.
                 </span>
+              </div>
+            </div>
+
+            {/* Wi-Fi & Bank Settings */}
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
+              <h3 className="text-sm font-extrabold text-blue-600 uppercase tracking-wider border-b pb-1.5 flex items-center gap-1.5">
+                <Settings className="w-4 h-4" />
+                Wi-Fi &amp; Settlement Setup
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Wi-Fi Name (SSID)</label>
+                  <input
+                    type="text"
+                    value={wifiName}
+                    onChange={(e) => setWifiName(e.target.value)}
+                    placeholder="e.g. MagicTick_Guest"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-805"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Wi-Fi Password</label>
+                  <input
+                    type="text"
+                    value={wifiPassword}
+                    onChange={(e) => setWifiPassword(e.target.value)}
+                    placeholder="e.g. guest@123"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-805"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Bank Account Name</label>
+                <input
+                  type="text"
+                  value={bankAccountName}
+                  onChange={(e) => setBankAccountName(e.target.value)}
+                  placeholder="e.g. MagicTick PG Services"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-805"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Bank Account Number</label>
+                  <input
+                    type="text"
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    placeholder="e.g. 1234567890"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-805"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">IFSC Code</label>
+                  <input
+                    type="text"
+                    value={bankIfscCode}
+                    onChange={(e) => setBankIfscCode(e.target.value)}
+                    placeholder="e.g. UTIB0000123"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-805"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Owner UPI ID</label>
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    placeholder="e.g. owner@upi"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-805"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">UPI QR Code URL</label>
+                  <input
+                    type="text"
+                    value={qrCodeUrl}
+                    onChange={(e) => setQrCodeUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-805"
+                  />
+                </div>
               </div>
             </div>
 

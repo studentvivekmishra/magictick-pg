@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/jwt';
 import bcrypt from 'bcryptjs';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Helper to check user auth
 async function getAuthUser(request: Request) {
   const cookieHeader = request.headers.get('cookie') || '';

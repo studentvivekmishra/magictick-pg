@@ -2,8 +2,21 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-export async function POST() {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function POST(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get('force') === 'true';
+
+    if (!force) {
+      const propertyCount = await prisma.property.count();
+      if (propertyCount > 0) {
+        return NextResponse.json({ success: true, message: 'Database already populated. Skipping reset.' });
+      }
+    }
+
     // 1. Clear database in dependent order to prevent foreign key errors
     await prisma.appQuery.deleteMany();
     await prisma.auditLog.deleteMany();
@@ -109,12 +122,12 @@ export async function POST() {
     const receptionistA = await prisma.user.create({
       data: {
         propertyId: propA.id,
-        email: 'receptionist@pgnexus.com',
+        email: 'staff@pgnexus.com',
         name: 'Sneha Patel',
         passwordHash: hashedPassword,
-        role: 'RECEPTIONIST',
+        role: 'MANAGER',
         salaryAmount: 12000,
-        salaryPaidStatus: 'PENDING',
+        salaryPaidStatus: 'PAID',
       },
     });
 

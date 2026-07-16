@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/jwt';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Helper to check user auth
 async function getSuperAdmin(request: Request) {
   const cookieHeader = request.headers.get('cookie') || '';
