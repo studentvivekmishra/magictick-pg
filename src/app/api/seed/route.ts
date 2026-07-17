@@ -14,7 +14,25 @@ export async function POST(request: Request) {
       const tenantUser = await prisma.user.findUnique({ where: { email: 'tenant@pgnexus.com' } });
       const propertyCount = await prisma.property.count();
       if (propertyCount > 0 && tenantUser) {
-        return NextResponse.json({ success: true, message: 'Database already populated. Skipping reset.' });
+        // Defensive: Reset passwords for all demo login shortcuts to ensure they always work
+        const hashedPassword = bcrypt.hashSync('password123', 10);
+        await prisma.user.updateMany({
+          where: {
+            email: {
+              in: [
+                'superadmin@magictick.com',
+                'owner@pgnexus.com',
+                'manager@pgnexus.com',
+                'tenant@pgnexus.com'
+              ]
+            }
+          },
+          data: {
+            passwordHash: hashedPassword,
+            isActive: true
+          }
+        });
+        return NextResponse.json({ success: true, message: 'Database already populated. Demo credentials synced.' });
       }
     }
 
