@@ -449,19 +449,19 @@ export default function TenantDashboard() {
 
       {/* Main Tabs Navigation */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
+        <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto scrollbar-thin">
           <button
             onClick={() => setActiveTab('payments')}
-            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'payments' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            Payments & Receipts
+            Payments &amp; Receipts
           </button>
           <button
             onClick={() => setActiveTab('agreements')}
-            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'agreements' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -470,7 +470,7 @@ export default function TenantDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('complaints')}
-            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'complaints' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -479,7 +479,7 @@ export default function TenantDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('bugs')}
-            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'bugs' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -488,7 +488,7 @@ export default function TenantDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all ${
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'profile' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -497,7 +497,7 @@ export default function TenantDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('contact')}
-            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'contact' ? 'bg-white text-blue-600' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -512,73 +512,78 @@ export default function TenantDashboard() {
             <div className="space-y-4">
               <h3 className="text-sm font-extrabold text-slate-900">Invoices & Payment Records</h3>
 
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 text-[10px] font-extrabold uppercase text-slate-500 border-b border-slate-200">
-                      <th className="p-3">Billing Cycle</th>
-                      <th className="p-3">Amount</th>
-                      <th className="p-3">Due Date</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payments.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-500">
-                          No bills generated yet.
-                        </td>
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto responsive-table">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-[10px] font-extrabold uppercase text-slate-500 border-b border-slate-200">
+                        <th className="p-3">Billing Cycle</th>
+                        <th className="p-3">Amount</th>
+                        <th className="p-3">Due Date</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Actions</th>
                       </tr>
-                    ) : (
-                      payments.map((p: any) => (
-                        <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/50">
-                          <td className="p-3 font-bold text-slate-800">
-                            {new Date(p.dueDate).toLocaleString('default', { month: 'long', year: 'numeric' })}
-                          </td>
-                          <td className="p-3">₹{p.amount}</td>
-                          <td className="p-3 text-slate-500">
-                            {new Date(p.dueDate).toLocaleDateString()}
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
-                                p.status === 'PAID'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                  : p.status === 'PENDING' && p.screenshotUrl
-                                  ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                                  : 'bg-rose-50 text-rose-700 border border-rose-100'
-                              }`}
-                            >
-                              {p.status === 'PENDING' && p.screenshotUrl ? 'Verifying' : p.status}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            {p.status === 'PENDING' && !p.screenshotUrl && (
-                              <button
-                                onClick={() => setShowPayModal(p)}
-                                className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1 rounded-lg"
-                              >
-                                <UploadCloud className="w-3.5 h-3.5" />
-                                <span>Pay Now</span>
-                              </button>
-                            )}
-                            {p.status === 'PAID' && (
-                              <a
-                                href={`/receipt/${p.id}`}
-                                target="_blank"
-                                className="flex items-center gap-1 text-blue-600 hover:underline font-bold"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Receipt</span>
-                              </a>
-                            )}
+                    </thead>
+                    <tbody>
+                      {payments.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-4 text-center text-slate-500 font-semibold">
+                            No bills generated yet.
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        payments.map((p: any) => (
+                          <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/50 font-semibold">
+                            <td className="p-3 font-bold text-slate-800" data-label="Billing Cycle">
+                              {new Date(p.dueDate).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </td>
+                            <td className="p-3" data-label="Amount">₹{p.amount}</td>
+                            <td className="p-3 text-slate-500 font-medium" data-label="Due Date">
+                              {new Date(p.dueDate).toLocaleDateString()}
+                            </td>
+                            <td className="p-3" data-label="Status">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                                  p.status === 'PAID'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                    : p.status === 'PENDING' && p.screenshotUrl
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                }`}
+                              >
+                                {p.status === 'PENDING' && p.screenshotUrl ? 'Verifying' : p.status}
+                              </span>
+                            </td>
+                            <td className="p-3" data-label="Actions">
+                              <div className="flex justify-end md:justify-start w-full">
+                                {p.status === 'PENDING' && !p.screenshotUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPayModal(p)}
+                                    className="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs w-full sm:w-auto"
+                                  >
+                                    <UploadCloud className="w-3.5 h-3.5" />
+                                    <span>Pay Now</span>
+                                  </button>
+                                )}
+                                {p.status === 'PAID' && (
+                                  <a
+                                    href={`/receipt/${p.id}`}
+                                    target="_blank"
+                                    className="flex items-center justify-center gap-1 text-blue-600 hover:underline font-bold text-xs"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>Receipt</span>
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
