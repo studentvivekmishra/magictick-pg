@@ -142,6 +142,7 @@ export default function CustomersPage() {
   const [newPincode, setNewPincode] = useState('');
   const [newNationality, setNewNationality] = useState('Indian');
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [newBloodGroup, setNewBloodGroup] = useState('');
   const [createTenantLogin, setCreateTenantLogin] = useState(false);
   const [tenantPassword, setTenantPassword] = useState('');
 
@@ -281,6 +282,7 @@ export default function CustomersPage() {
         setNewPermAddress('');
         setNewCurrAddress('');
         setNewPincode('');
+        setNewBloodGroup('');
         setCreateTenantLogin(false);
         setTenantPassword('');
         setNewPhotoUrl('');
