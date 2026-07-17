@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Paths that do not require auth
-  if (pathname === '/' || pathname.startsWith('/api/auth') || pathname.startsWith('/api/seed') || pathname.startsWith('/_next') || pathname.includes('.')) {
+  if (pathname === '/' || pathname.startsWith('/api/auth') || pathname.startsWith('/api/seed') || pathname.startsWith('/api/debug-db') || pathname.startsWith('/_next') || pathname.includes('.')) {
     return NextResponse.next();
   }
 
