@@ -297,7 +297,7 @@ export default function PaymentsPage() {
 
           {/* Ledger Table */}
           <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto responsive-table">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/30 text-muted-foreground font-bold">
@@ -324,33 +324,34 @@ export default function PaymentsPage() {
 
                       return (
                         <tr key={p.id} className="border-b border-border hover:bg-muted/10 transition-colors font-semibold">
-                          <td className="p-4">
+                          <td className="p-4" data-label="Tenant">
                             <p className="font-bold text-sm text-foreground">{p.customer.name}</p>
                             <span className="text-[10px] text-muted-foreground">{p.customer.phone}</span>
                           </td>
-                          <td className="p-4">
+                          <td className="p-4" data-label="Room/Bed">
                             Room {p.roomAllocation.room.roomNumber} (Bed {p.roomAllocation.bed.bedNumber.split('-')[1]})
                           </td>
-                          <td className="p-4">
+                          <td className="p-4" data-label="Due Date">
                             {new Date(p.dueDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </td>
-                          <td className="p-4 font-extrabold text-foreground text-sm">
+                          <td className="p-4 font-extrabold text-foreground text-sm" data-label="Amount">
                             ₹{p.amount + p.lateFee - p.discount}
                           </td>
-                          <td className="p-4">
+                          <td className="p-4" data-label="Status">
                             <span className={`px-2.5 py-0.5 rounded-full border text-[9px] uppercase tracking-wider font-bold ${statusBadge}`}>
                               {p.status}
                             </span>
                           </td>
-                          <td className="p-4">
+                          <td className="p-4" data-label="Action">
                             {p.status === 'PENDING' ? (
-                              <div className="flex gap-2">
+                              <div className="flex flex-col sm:flex-row gap-1.5 md:gap-2 justify-end md:justify-start w-full">
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setSelectedPayment(p);
                                     setIsUploadOpen(true);
                                   }}
-                                  className="flex items-center gap-1 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-500/20 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
+                                  className="flex items-center justify-center gap-1 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-500/20 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all w-full sm:w-auto"
                                 >
                                   <Upload className="w-3.5 h-3.5" />
                                   Upload proof
@@ -358,19 +359,20 @@ export default function PaymentsPage() {
 
                                 {!isStaff && (
                                   <button
+                                    type="button"
                                     onClick={() => {
                                       setSelectedPayment(p);
                                       setVerifyStatus('APPROVED');
                                       setIsVerifyOpen(true);
                                     }}
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-md shadow-emerald-500/10 active:scale-95 transition-all"
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-md shadow-emerald-500/10 active:scale-95 transition-all w-full sm:w-auto text-center"
                                   >
                                     Verify Manually
                                   </button>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold">
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold justify-end md:justify-start">
                                 <FileCheck className="w-3.5 h-3.5 text-emerald-500" />
                                 Paid ({p.mode || 'CASH'})
                               </span>

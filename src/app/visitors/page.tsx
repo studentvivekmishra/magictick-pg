@@ -211,7 +211,7 @@ export default function VisitorsPage() {
 
       {/* Visitors Log Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto responsive-table">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-border bg-muted/30 text-muted-foreground font-bold font-sans">
@@ -233,8 +233,8 @@ export default function VisitorsPage() {
               ) : (
                 filteredVisitors.map((v) => (
                   <tr key={v.id} className="border-b border-border hover:bg-muted/10 transition-colors font-semibold">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
+                    <td className="p-4" data-label="Visitor">
+                      <div className="flex items-center gap-3 justify-end md:justify-start">
                         <div className="w-8 h-8 rounded-full overflow-hidden border bg-zinc-200 shrink-0">
                           <img
                             src={v.photoUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=80'}
@@ -242,23 +242,23 @@ export default function VisitorsPage() {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div>
+                        <div className="text-left">
                           <p className="font-bold text-sm text-foreground">{v.visitorName}</p>
                           <span className="text-[10px] text-muted-foreground">{v.phone}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-sm font-bold text-foreground">{v.customer.name}</td>
-                    <td className="p-4">{v.relation}</td>
-                    <td className="p-4">
-                      <span className="flex items-center gap-1">
+                    <td className="p-4 text-sm font-bold text-foreground" data-label="Visiting Guest">{v.customer.name}</td>
+                    <td className="p-4" data-label="Relationship">{v.relation}</td>
+                    <td className="p-4" data-label="Entry Time">
+                      <span className="flex items-center gap-1 justify-end md:justify-start">
                         <Clock className="w-3.5 h-3.5 text-indigo-500" />
                         {new Date(v.entryTime).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </td>
-                    <td className="p-4 text-muted-foreground">
+                    <td className="p-4 text-muted-foreground" data-label="Exit Time">
                       {v.exitTime ? (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 justify-end md:justify-start">
                           <Clock className="w-3.5 h-3.5 text-zinc-400" />
                           {new Date(v.exitTime).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -268,11 +268,12 @@ export default function VisitorsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="p-4">
+                    <td className="p-4" data-label="Action">
                       {!v.exitTime ? (
                         <button
+                          type="button"
                           onClick={() => handleCheckoutVisitor(v.id)}
-                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] shadow-sm active:scale-95 transition-all"
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] shadow-sm active:scale-95 transition-all w-full sm:w-auto"
                         >
                           Check Out Visitor
                         </button>

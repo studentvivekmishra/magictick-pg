@@ -117,6 +117,18 @@ export default function TenantDashboard() {
     loadProfile();
   }, []);
 
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['payments', 'agreements', 'complaints', 'bugs', 'profile', 'contact'].includes(hash)) {
+        setActiveTab(hash as any);
+      }
+    };
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const handlePayProof = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payTxnId) return alert('Transaction ID is required');

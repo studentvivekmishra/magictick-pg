@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import PWALoader from '@/components/PWALoader';
 import AICompanion from '@/components/AICompanion';
-import { RefreshCw, Menu, Building } from 'lucide-react';
+import { RefreshCw, Menu, Building, LayoutDashboard, Home, Users, CreditCard } from 'lucide-react';
 
 interface UserSession {
   userId: string;
@@ -62,6 +62,29 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     checkAuth();
   }, [pathname, router]);
 
+  const getBottomNavItems = () => {
+    if (!user) return [];
+    
+    if (user.role === 'TENANT') {
+      return [
+        { name: 'Home', path: '/tenant', icon: LayoutDashboard },
+        { name: 'Payments', path: '/tenant#payments', icon: CreditCard },
+        { name: 'Profile', path: '/tenant#profile', icon: Users },
+        { name: 'More', path: '#', icon: Menu, action: 'menu' }
+      ];
+    }
+
+    return [
+      { name: 'Home', path: '/dashboard', icon: LayoutDashboard },
+      { name: 'Rooms', path: '/rooms', icon: Home },
+      { name: 'Guests', path: '/customers', icon: Users },
+      { name: 'Payments', path: '/payments', icon: CreditCard },
+      { name: 'More', path: '#', icon: Menu, action: 'menu' }
+    ];
+  };
+
+  const bottomNavItems = getBottomNavItems();
+
   if (loading && !isPublicPage) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-slate-50">
@@ -111,9 +134,39 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </header>
 
         {/* Dynamic Margin/Padding adjustments */}
-        <main className="flex-1 p-4 pt-20 md:pt-8 md:p-8 max-w-7xl w-full mx-auto animate-fade-in">
+        <main className="flex-1 p-4 pt-20 pb-20 md:pb-8 md:pt-8 md:p-8 max-w-7xl w-full mx-auto animate-fade-in">
           {children}
         </main>
+
+        {/* Bottom Navigation Bar for Mobile */}
+        {user && (
+          <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-30 flex items-center justify-around md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.03)] pb-safe">
+            {bottomNavItems.map((item) => {
+              const Icon = item.icon;
+              // Check if active
+              const isActive = item.path !== '#' && (pathname === item.path || (item.path !== '/tenant' && pathname.startsWith(item.path)));
+              return (
+                <button
+                  key={item.name}
+                  type="button"
+                  onClick={() => {
+                    if (item.action === 'menu') {
+                      setSidebarOpen(true);
+                    } else {
+                      router.push(item.path);
+                    }
+                  }}
+                  className={`flex flex-col items-center justify-center flex-1 h-full py-1 gap-0.5 text-center active:scale-95 transition-transform ${
+                    isActive ? 'text-blue-600' : 'text-slate-500'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
+                  <span className="text-[9px] font-bold uppercase tracking-wider">{item.name}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
         
         {user && user.role !== 'TENANT' && <AICompanion user={user} />}
       </div>
