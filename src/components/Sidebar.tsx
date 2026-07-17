@@ -59,7 +59,7 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { name: 'Complaints', path: '/complaints', icon: AlertOctagon, roles: ['OWNER', 'MANAGER', 'RECEPTIONIST'] },
     { name: 'Expenses', path: '/expenses', icon: DollarSign, roles: ['OWNER', 'MANAGER'] },
     { name: 'Visitors Log', path: '/visitors', icon: UserCheck, roles: ['OWNER', 'MANAGER', 'RECEPTIONIST'] },
-    { name: 'Analytics', path: '/analytics', icon: TrendingUp, roles: ['OWNER', 'MANAGER'] },
+    { name: 'Analytics', path: '/analytics', icon: TrendingUp, roles: ['OWNER'] },
     { name: 'Settings', path: '/settings', icon: Settings, roles: ['OWNER'] },
   ];
 

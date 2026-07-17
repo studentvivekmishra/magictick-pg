@@ -11,8 +11,9 @@ export async function POST(request: Request) {
     const force = searchParams.get('force') === 'true';
 
     if (!force) {
+      const tenantUser = await prisma.user.findUnique({ where: { email: 'tenant@pgnexus.com' } });
       const propertyCount = await prisma.property.count();
-      if (propertyCount > 0) {
+      if (propertyCount > 0 && tenantUser) {
         return NextResponse.json({ success: true, message: 'Database already populated. Skipping reset.' });
       }
     }

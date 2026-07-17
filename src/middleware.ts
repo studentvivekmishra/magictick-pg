@@ -78,14 +78,29 @@ export function middleware(request: NextRequest) {
     }
 
     // Owner and Manager restriction checks
-    if (pathname.startsWith('/expenses') || pathname.startsWith('/analytics') || pathname.startsWith('/settings')) {
+    if (pathname.startsWith('/expenses')) {
       if (role !== 'OWNER' && role !== 'MANAGER') {
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
     }
 
-    if (pathname.startsWith('/api/expenses') || pathname.startsWith('/api/analytics') || pathname.startsWith('/api/settings')) {
+    if (pathname.startsWith('/analytics') || pathname.startsWith('/settings')) {
+      if (role !== 'OWNER') {
+        return NextResponse.redirect(new URL('/unauthorized', request.url));
+      }
+    }
+
+    if (pathname.startsWith('/api/expenses')) {
       if (role !== 'OWNER' && role !== 'MANAGER') {
+        return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    if (pathname.startsWith('/api/analytics') || pathname.startsWith('/api/settings')) {
+      if (role !== 'OWNER') {
         return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
           status: 403,
           headers: { 'Content-Type': 'application/json' },
