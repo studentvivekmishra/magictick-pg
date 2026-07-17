@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import PWALoader from '@/components/PWALoader';
 import AICompanion from '@/components/AICompanion';
-import { RefreshCw, Menu, Building, LayoutDashboard, Home, Users, CreditCard } from 'lucide-react';
+import { RefreshCw, Menu, Building, LayoutDashboard, Home, Users, CreditCard, AlertOctagon, FileText } from 'lucide-react';
 
 interface UserSession {
   userId: string;
@@ -81,10 +81,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     
     if (user.role === 'TENANT') {
       return [
-        { name: 'Home', path: '/tenant', icon: LayoutDashboard },
+        { name: 'Dashboard', path: '/tenant', icon: LayoutDashboard },
         { name: 'Payments', path: '/tenant#payments', icon: CreditCard },
-        { name: 'Profile', path: '/tenant#profile', icon: Users },
-        { name: 'More', path: '#', icon: Menu, action: 'menu' }
+        { name: 'Complaints', path: '/tenant#complaints', icon: AlertOctagon },
+        { name: 'Documents', path: '/tenant#agreements', icon: FileText },
+        { name: 'Profile', path: '/tenant#profile', icon: Users }
       ];
     }
 
@@ -165,7 +166,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               const isActive = item.path !== '#' && (
                 itemHash 
                   ? (pathname === itemPathWithoutHash && currentHash === itemHash)
-                  : (pathname === item.path && (!currentHash || currentHash === '#agreements' || currentHash === '#complaints' || currentHash === '#bugs' || currentHash === '#contact'))
+                  : (pathname === item.path && (!currentHash || currentHash === '#dashboard' || currentHash === '#bugs' || currentHash === '#contact'))
               );
 
               return (

@@ -29,7 +29,7 @@ import {
 export default function TenantDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'payments' | 'agreements' | 'complaints' | 'bugs' | 'profile' | 'contact'>('payments');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'payments' | 'agreements' | 'complaints' | 'bugs' | 'profile' | 'contact'>('dashboard');
   
   // Submit payment modal fields
   const [showPayModal, setShowPayModal] = useState<any>(null); // holds payment object
@@ -120,8 +120,17 @@ export default function TenantDashboard() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['payments', 'agreements', 'complaints', 'bugs', 'profile', 'contact'].includes(hash)) {
+      if (['dashboard', 'payments', 'agreements', 'complaints', 'bugs', 'profile', 'contact'].includes(hash)) {
         setActiveTab(hash as any);
+      } else {
+        // Viewport-aware default
+        if (typeof window !== 'undefined') {
+          if (window.innerWidth >= 768) {
+            setActiveTab('payments');
+          } else {
+            setActiveTab('dashboard');
+          }
+        }
       }
     };
     handleHashChange();
@@ -381,12 +390,14 @@ export default function TenantDashboard() {
     <div className="space-y-6 text-xs font-semibold text-slate-800">
       
       {/* Welcome Banner */}
-      <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className={`bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
+        activeTab === 'dashboard' ? 'flex' : 'hidden md:flex'
+      }`}>
         <div>
           <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            {profile.property?.name || 'Guest Portal'}
+            {profile?.property?.name || 'Guest Portal'}
           </span>
-          <h2 className="text-2xl font-extrabold text-slate-900 mt-2">Welcome Back, {profile.name}</h2>
+          <h2 className="text-2xl font-extrabold text-slate-900 mt-2">Welcome Back, {profile?.name || 'Resident'}</h2>
           <p className="text-xs text-slate-500 font-medium mt-1">
             Track stays, verify billings, generate stamped lease agreements, and log helpdesk tickets.
           </p>
@@ -408,7 +419,9 @@ export default function TenantDashboard() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 ${
+        activeTab === 'dashboard' ? 'grid' : 'hidden md:grid'
+      }`}>
         <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
             <CreditCard className="w-3.5 h-3.5 text-blue-600" />
@@ -507,6 +520,95 @@ export default function TenantDashboard() {
         </div>
 
         <div className="p-6">
+          {/* TAB 0: MOBILE/PC DASHBOARD HOME */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6 animate-fade-in">
+              
+              {/* Stay details profile block */}
+              {activeStay && (
+                <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Stay &amp; Room Details</h4>
+                  <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                    <div className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-sm">
+                      <p className="text-[9px] text-slate-400 font-extrabold uppercase">Room Allocation</p>
+                      <p className="font-extrabold text-slate-800 mt-1">Room {activeStay.room.roomNumber}</p>
+                      <span className="text-[9px] text-slate-500 mt-0.5 block">{activeStay.room.sharingType} Sharing</span>
+                    </div>
+                    <div className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-sm">
+                      <p className="text-[9px] text-slate-400 font-extrabold uppercase">Bed Number</p>
+                      <p className="font-extrabold text-slate-800 mt-1">Bed {activeStay.bed.bedNumber.split('-')[1]}</p>
+                      <span className="text-[9px] text-emerald-600 font-bold mt-0.5 block">Allocated</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Actions Grid for Mobile */}
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Quick Actions</h4>
+                <div className="grid grid-cols-2 gap-3.5">
+                  <a href="#payments" className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm text-center">
+                    <div className="bg-blue-50 text-blue-600 p-3 rounded-xl shadow-sm">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-800">Rent Payments</span>
+                  </a>
+                  <a href="#complaints" className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm text-center">
+                    <div className="bg-rose-50 text-rose-600 p-3 rounded-xl shadow-sm">
+                      <AlertOctagon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-800">Raise Complaint</span>
+                  </a>
+                  <a href="#agreements" className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm text-center">
+                    <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl shadow-sm">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-800">Lease Documents</span>
+                  </a>
+                  <a href="#profile" className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm text-center">
+                    <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl shadow-sm">
+                      <UserCheck className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-800">My Profile</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Announcements / Notifications Section */}
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">PG Announcements &amp; Notifications</h4>
+                {(!profile?.notifications || profile.notifications.length === 0) ? (
+                  <div className="bg-slate-50 border border-slate-200 p-8 rounded-2xl text-center text-slate-500 font-medium">
+                    No recent announcements or notifications.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {profile.notifications.map((n: any) => (
+                      <div key={n.id} className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm flex items-start gap-3.5 hover:bg-slate-50/30 transition-colors">
+                        <div className={`p-2.5 rounded-xl shrink-0 ${
+                          n.type === 'WARNING'
+                            ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                            : n.type === 'SUCCESS'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : 'bg-blue-50 text-blue-600 border border-blue-100'
+                        }`}>
+                          <Info className="w-4 h-4 animate-pulse" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-xs text-slate-900 leading-snug">{n.title}</p>
+                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{n.message}</p>
+                          <span className="text-[8px] text-slate-400 font-bold block mt-1">
+                            Posted: {new Date(n.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: PAYMENTS */}
           {activeTab === 'payments' && (
             <div className="space-y-4">
@@ -591,23 +693,25 @@ export default function TenantDashboard() {
           {/* TAB 2: AGREEMENTS */}
           {activeTab === 'agreements' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center border-b pb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 gap-4">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 font-sans">Stamp Rent Agreement Module</h3>
                   <p className="text-[10px] text-slate-500 mt-0.5">Apply for legal lease drafting or submit pre-signed records.</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <button
+                    type="button"
                     onClick={() => setShowLeaseModal(true)}
-                    className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-1.5 rounded-xl"
+                    className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-3 rounded-xl text-xs w-full sm:w-auto active:scale-95 transition-transform"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Apply for Stamp Lease</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setShowUploadLease(true)}
-                    className="flex items-center gap-1 bg-slate-100 border hover:bg-slate-200 text-slate-700 font-bold px-3.5 py-1.5 rounded-xl"
+                    className="flex items-center justify-center gap-1.5 bg-slate-100 border hover:bg-slate-200 text-slate-700 font-bold px-4 py-3 rounded-xl text-xs w-full sm:w-auto active:scale-95 transition-transform"
                   >
                     <UploadCloud className="w-4 h-4" />
                     <span>Upload Signed Agreement</span>
@@ -1024,7 +1128,7 @@ export default function TenantDashboard() {
                   <button
                     type="submit"
                     disabled={updatingSettings}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs shadow-sm shadow-blue-500/10"
+                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl text-xs shadow-sm shadow-blue-500/10 active:scale-95 transition-transform"
                   >
                     {updatingSettings ? 'Saving details...' : 'Save Profile Details'}
                   </button>

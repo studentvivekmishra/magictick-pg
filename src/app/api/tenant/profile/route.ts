@@ -75,9 +75,20 @@ export async function GET(request: Request) {
       },
     });
 
+    const notifications = await prisma.notification.findMany({
+      where: {
+        targetRole: { in: ['ALL', 'TENANT'] },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 10,
+    });
+
     return NextResponse.json({
       ...customer,
       managers,
+      notifications,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
