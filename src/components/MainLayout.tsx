@@ -20,6 +20,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [user, setUser] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentHash, setCurrentHash] = useState('');
 
   const isPublicPage = pathname === '/' || pathname === '/unauthorized';
 
@@ -27,6 +28,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     // Auto-close sidebar drawer on route transition
     setSidebarOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentHash(window.location.hash || '');
+      const handleHashChange = () => {
+        setCurrentHash(window.location.hash || '');
+      };
+      window.addEventListener('hashchange', handleHashChange);
+      return () => {
+        window.removeEventListener('hashchange', handleHashChange);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -143,8 +157,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-30 flex items-center justify-around md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.03)] pb-safe">
             {bottomNavItems.map((item) => {
               const Icon = item.icon;
-              // Check if active
-              const isActive = item.path !== '#' && (pathname === item.path || (item.path !== '/tenant' && pathname.startsWith(item.path)));
+              
+              // Calculate path and hash active states
+              const itemPathWithoutHash = item.path.split('#')[0];
+              const itemHash = item.path.includes('#') ? '#' + item.path.split('#')[1] : '';
+              
+              const isActive = item.path !== '#' && (
+                itemHash 
+                  ? (pathname === itemPathWithoutHash && currentHash === itemHash)
+                  : (pathname === item.path && (!currentHash || currentHash === '#agreements' || currentHash === '#complaints' || currentHash === '#bugs' || currentHash === '#contact'))
+              );
+
               return (
                 <button
                   key={item.name}

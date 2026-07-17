@@ -449,7 +449,7 @@ export default function TenantDashboard() {
 
       {/* Main Tabs Navigation */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto scrollbar-thin">
+        <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto scrollbar-thin hidden md:flex">
           <button
             onClick={() => setActiveTab('payments')}
             className={`flex items-center gap-1.5 px-6 py-3 font-bold text-xs border-r border-slate-200 transition-all shrink-0 whitespace-nowrap ${
